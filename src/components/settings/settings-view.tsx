@@ -1,0 +1,388 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import {
+  User,
+  Building2,
+  Users,
+  Plug,
+  BrainCircuit,
+  Palette,
+  CreditCard,
+  Check,
+  ChevronRight,
+  Plus,
+} from "lucide-react";
+import { InstagramIcon, MessengerIcon, WhatsAppIcon, GlobeIcon, MailIcon } from "@/components/ui/brand-icons";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
+import { Chip } from "@/components/ui/chip";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { useTheme } from "next-themes";
+import { saveAiSettings, updateOrgProfile } from "@/app/actions/settings";
+import { resetDemo } from "@/app/actions/orgs";
+
+type Org = {
+  id: string;
+  name: string;
+  tagline: string | null;
+  logo_url: string | null;
+  timezone: string;
+  tone: string;
+  threshold_auto: number;
+  threshold_suggest: number;
+  shadow_mode: boolean;
+  never_promise: string[];
+  must_escalate: string[];
+};
+
+type Channel = { id: string; type: string; status: string; label: string | null };
+
+const SECTIONS = [
+  { id: "profile", label: "Perfil", icon: User },
+  { id: "org", label: "Organización", icon: Building2 },
+  { id: "team", label: "Equipo", icon: Users },
+  { id: "channels", label: "Canales", icon: Plug },
+  { id: "ai", label: "IA", icon: BrainCircuit },
+  { id: "appearance", label: "Apariencia", icon: Palette },
+  { id: "billing", label: "Facturación", icon: CreditCard },
+];
+
+export function SettingsView({ org, channels }: { org: Org; channels: Channel[] }) {
+  const [sec, setSec] = useState("ai");
+  return (
+    <div className="flex h-[calc(100vh-56px)]">
+      <aside className="w-56 border-r border-[color:var(--border)] bg-bg-1 p-2">
+        {SECTIONS.map((s) => {
+          const Icon = s.icon;
+          return (
+            <button
+              key={s.id}
+              onClick={() => setSec(s.id)}
+              className={cn(
+                "w-full flex items-center gap-2.5 px-3 h-10 rounded-xl text-sm transition-colors",
+                sec === s.id ? "bg-bg-3 text-fg font-medium" : "text-fg-3 hover:text-fg hover:bg-bg-2"
+              )}
+            >
+              <Icon className="h-[18px] w-[18px]" /> {s.label}
+            </button>
+          );
+        })}
+      </aside>
+      <main className="flex-1 overflow-y-auto px-6 lg:px-10 py-8 max-w-3xl">
+        {sec === "ai" && <AISettings org={org} />}
+        {sec === "profile" && <ProfileSection org={org} />}
+        {sec === "org" && <OrgSection org={org} />}
+        {sec === "team" && <TeamSection />}
+        {sec === "channels" && <ChannelsSection channels={channels} />}
+        {sec === "appearance" && <AppearanceSection />}
+        {sec === "billing" && <BillingSection />}
+      </main>
+    </div>
+  );
+}
+
+function AISettings({ org }: { org: Org }) {
+  const [tAuto, setTAuto] = useState(Math.round(org.threshold_auto * 100));
+  const [tSuggest, setTSuggest] = useState(Math.round(org.threshold_suggest * 100));
+  const [shadow, setShadow] = useState(org.shadow_mode);
+  const [tone, setTone] = useState(org.tone);
+  const [isPending, start] = useTransition();
+
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-1">Comportamiento de la IA</h2>
+      <p className="text-fg-3 text-sm mb-8">Ajustá cuánta autonomía tiene tu IA. Sin configuración técnica.</p>
+
+      <section className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-5 mb-4">
+        <h3 className="font-semibold mb-4">Umbrales del semáforo</h3>
+        <div className="space-y-6">
+          <ThresholdRow
+            color="green"
+            label="Responder sola si la confianza es"
+            value={tAuto}
+            onChange={setTAuto}
+            hint="Por encima de esto la IA manda sin preguntarte."
+          />
+          <ThresholdRow
+            color="amber"
+            label="Sugerir una respuesta si es"
+            value={tSuggest}
+            onChange={setTSuggest}
+            hint="Entre este valor y el anterior, la IA te muestra sugerencia para aprobar."
+          />
+          <div className="rounded-xl border border-[color:var(--accent-red)]/25 bg-[rgba(239,68,68,0.04)] p-3 text-sm text-fg-2">
+            <b className="text-[color:var(--accent-red-2)]">Debajo de {tSuggest}%</b>: siempre te pasa la consulta a vos.
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-5 mb-4">
+        <div className="flex items-start gap-3">
+          <Switch checked={shadow} onCheckedChange={setShadow} className="mt-1" />
+          <div>
+            <div className="font-semibold">Modo sombra</div>
+            <div className="text-sm text-fg-3 mt-0.5">
+              La IA prepara sugerencias pero <b>nunca envía sola</b>. Útil mientras la entrenás al principio.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-5 mb-4">
+        <h3 className="font-semibold mb-3">Tono general</h3>
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            { id: "formal", label: "Formal" },
+            { id: "casual", label: "Casual" },
+            { id: "amigable", label: "Amigable" },
+            { id: "neutro", label: "Neutro" },
+          ].map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTone(t.id)}
+              className={cn(
+                "rounded-xl border p-3 text-left transition",
+                tone === t.id ? "border-brand-2 bg-[rgba(139,92,246,0.08)]" : "border-[color:var(--border)] bg-bg-2"
+              )}
+            >
+              <div className="font-medium">{t.label}</div>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <div className="flex justify-end">
+        <Button
+          disabled={isPending}
+          onClick={() =>
+            start(async () => {
+              await saveAiSettings({
+                threshold_auto: tAuto / 100,
+                threshold_suggest: tSuggest / 100,
+                shadow_mode: shadow,
+                tone,
+              });
+              toast.success("Configuración guardada");
+            })
+          }
+        >
+          Guardar cambios
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ThresholdRow({
+  color,
+  label,
+  value,
+  onChange,
+  hint,
+}: {
+  color: "green" | "amber";
+  label: string;
+  value: number;
+  onChange: (v: number) => void;
+  hint: string;
+}) {
+  const hex = color === "green" ? "#10B981" : "#F59E0B";
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2 text-sm">
+          <span className={`h-2 w-2 rounded-full dot-${color}`} />
+          {label}
+        </div>
+        <span className="font-mono text-sm" style={{ color: hex }}>
+          {value}%
+        </span>
+      </div>
+      <Slider value={[value]} onValueChange={([v]) => onChange(v)} min={0} max={100} step={1} />
+      <div className="text-xs text-fg-3 mt-1.5">{hint}</div>
+    </div>
+  );
+}
+
+function ProfileSection({ org }: { org: Org }) {
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-6">Perfil</h2>
+      <div className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-5 flex flex-col gap-4">
+        <Field label="Nombre" value="Tú" />
+        <Field label="Email" value="tu@negocio.com" />
+        <Field label="Idioma" value="Español" />
+      </div>
+    </div>
+  );
+}
+
+function OrgSection({ org }: { org: Org }) {
+  const [name, setName] = useState(org.name);
+  const [tagline, setTagline] = useState(org.tagline || "");
+  const [isPending, start] = useTransition();
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-1">Organización</h2>
+      <p className="text-fg-3 text-sm mb-6">Datos que ve tu IA al responder.</p>
+      <div className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-5 flex flex-col gap-4">
+        <div>
+          <label className="text-xs text-fg-3 font-medium mb-1 block">Nombre del negocio</label>
+          <Input value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-fg-3 font-medium mb-1 block">Tagline</label>
+          <Input value={tagline} onChange={(e) => setTagline(e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-fg-3 font-medium mb-1 block">Zona horaria</label>
+          <Input value={org.timezone} readOnly />
+        </div>
+        <div className="flex justify-between">
+          <form action={async () => { await resetDemo(); }}>
+            <Button variant="ghost" size="sm" type="submit">Rehacer onboarding</Button>
+          </form>
+          <Button
+            disabled={isPending}
+            onClick={() =>
+              start(async () => {
+                await updateOrgProfile({ name, tagline });
+                toast.success("Guardado");
+              })
+            }
+          >
+            Guardar
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TeamSection() {
+  const roles = [
+    { name: "Nacho", email: "nacho@negocio.com", role: "admin", color: "#8B5CF6" },
+    { name: "Juan", email: "juan@negocio.com", role: "agente", color: "#10B981" },
+  ];
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-6">Equipo</h2>
+      <div className="rounded-2xl border border-[color:var(--border)] bg-bg-1 overflow-hidden">
+        {roles.map((r, i) => (
+          <div key={i} className="flex items-center gap-3 px-5 py-4 border-b border-[color:var(--border)] last:border-0">
+            <div className="h-9 w-9 rounded-full flex items-center justify-center text-white font-semibold" style={{ background: r.color }}>
+              {r.name[0]}
+            </div>
+            <div className="flex-1">
+              <div className="font-medium">{r.name}</div>
+              <div className="text-xs text-fg-3">{r.email}</div>
+            </div>
+            <Badge variant={r.role === "admin" ? "brand" : "default"}>{r.role}</Badge>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3">
+        <Button variant="secondary" className="gap-2">
+          <Plus className="h-4 w-4" /> Invitar miembro
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ChannelsSection({ channels }: { channels: Channel[] }) {
+  const ALL: { type: string; label: string; icon: (p: { size?: number }) => React.JSX.Element; color: string }[] = [
+    { type: "whatsapp", label: "WhatsApp", icon: (p) => <WhatsAppIcon size={p.size ?? 16} />, color: "#25D366" },
+    { type: "instagram", label: "Instagram", icon: (p) => <InstagramIcon size={p.size ?? 16} />, color: "#E4405F" },
+    { type: "messenger", label: "Messenger", icon: (p) => <MessengerIcon size={p.size ?? 16} />, color: "#1877F2" },
+    { type: "webchat", label: "Webchat", icon: (p) => <GlobeIcon size={p.size ?? 16} />, color: "#8B5CF6" },
+    { type: "email", label: "Email", icon: (p) => <MailIcon size={p.size ?? 16} />, color: "#64748B" },
+  ];
+  const map: Record<string, Channel | undefined> = {};
+  for (const c of channels) map[c.type] = c;
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-6">Canales</h2>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {ALL.map((a) => {
+          const ch = map[a.type];
+          return (
+            <div key={a.type} className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-4 flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white" style={{ background: a.color }}>
+                {a.icon({ size: 16 })}
+              </div>
+              <div className="flex-1">
+                <div className="font-medium">{a.label}</div>
+                <div className="text-xs text-fg-3">
+                  {ch?.status === "connected" ? "Conectado" : ch?.status === "pending" ? "Pendiente" : "No conectado"}
+                </div>
+              </div>
+              {ch?.status === "connected" ? (
+                <Badge variant="green"><Check className="h-3 w-3" /> Activo</Badge>
+              ) : (
+                <Button size="sm" variant="secondary">
+                  Conectar
+                </Button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AppearanceSection() {
+  const { theme, setTheme } = useTheme();
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-6">Apariencia</h2>
+      <div className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-5">
+        <h3 className="font-semibold mb-3">Tema</h3>
+        <div className="grid grid-cols-2 gap-2 max-w-md">
+          {["dark", "light"].map((t) => (
+            <button
+              key={t}
+              onClick={() => setTheme(t)}
+              className={cn(
+                "rounded-xl border p-3 text-left transition",
+                theme === t ? "border-brand bg-[rgba(139,92,246,0.08)]" : "border-[color:var(--border)] bg-bg-2"
+              )}
+            >
+              <div className="font-medium capitalize">{t === "dark" ? "Oscuro" : "Claro"}</div>
+              <div className="text-xs text-fg-3">{t === "dark" ? "Recomendado para uso prolongado" : "Para ambientes muy iluminados"}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BillingSection() {
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-6">Facturación</h2>
+      <div className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-8 text-center">
+        <CreditCard className="h-10 w-10 text-fg-3 mx-auto mb-3" />
+        <div className="font-semibold mb-1">Plan: Prueba</div>
+        <div className="text-sm text-fg-3 mb-4">Estás probando TextOS con todas las funciones.</div>
+        <Button>Elegir plan</Button>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <label className="text-xs text-fg-3 font-medium mb-1 block">{label}</label>
+      <Input value={value} readOnly />
+    </div>
+  );
+}
