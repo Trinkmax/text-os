@@ -291,6 +291,35 @@ type _Tables = {
         };
         Update: Partial<{ role: "admin" | "agent" | "readonly"; accepted_at: string | null }>;
       };
+      textos_ai_providers: {
+        Row: {
+          id: string;
+          org_id: string;
+          nickname: string;
+          provider: "vercel_gateway" | "openai" | "anthropic" | "google" | "groq" | "mistral" | "ollama" | "custom";
+          model: string;
+          role: "generation" | "classification" | "embedding";
+          is_default: boolean;
+          is_active: boolean;
+          priority: number;
+          config: Json;
+          secrets: Json;
+          last_tested_at: string | null;
+          last_test_ok: boolean | null;
+          last_test_latency_ms: number | null;
+          last_test_error: string | null;
+          last_test_sample: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["textos_ai_providers"]["Row"]> & {
+          org_id: string;
+          nickname: string;
+          provider: "vercel_gateway" | "openai" | "anthropic" | "google" | "groq" | "mistral" | "ollama" | "custom";
+          model: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["textos_ai_providers"]["Row"]>;
+      };
 };
 
 export type Database = {
