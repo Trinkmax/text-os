@@ -28,7 +28,7 @@ export function AppHeader({
   useEffect(() => setMounted(true), []);
 
   return (
-    <header className="glass sticky top-0 z-30 h-14 border-b border-[color:var(--border)] flex items-center gap-3 px-5">
+    <header className="glass sticky top-0 z-30 h-14 border-b border-[color:var(--border)] hidden md:flex items-center gap-3 px-5">
       <button
         onClick={open}
         className="flex items-center gap-2 h-9 px-3 rounded-xl bg-bg-1 border border-[color:var(--border)] text-sm text-fg-3 hover:text-fg hover:border-[color:var(--border-strong)] transition-all flex-1 max-w-md"

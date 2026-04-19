@@ -36,14 +36,13 @@ interface CampaignsViewProps {
 export function CampaignsView({ campaigns, contactsCount }: CampaignsViewProps) {
   const [composing, setComposing] = useState(false);
   return (
-    <div className="px-6 lg:px-10 py-8 max-w-6xl mx-auto w-full">
-      <header className="mb-6 flex items-center gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Campañas</h1>
+    <div className="px-4 sm:px-6 lg:px-10 py-6 md:py-8 max-w-6xl mx-auto w-full">
+      <header className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight">Campañas</h1>
           <p className="text-fg-3 text-sm mt-0.5">Mensajes masivos, con métricas como si fueran uno a uno.</p>
         </div>
-        <div className="flex-1" />
-        <Button className="gap-2" onClick={() => setComposing(true)}>
+        <Button className="gap-2 w-full sm:w-auto" onClick={() => setComposing(true)}>
           <Plus className="h-4 w-4" /> Nueva campaña
         </Button>
       </header>
@@ -75,13 +74,16 @@ export function CampaignsView({ campaigns, contactsCount }: CampaignsViewProps) 
             const stats = c.stats || {};
             const total = stats.total ?? 0;
             return (
-              <div key={c.id} className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-4 flex items-center gap-4">
-                <div className="h-10 w-10 rounded-xl bg-bg-2 border border-[color:var(--border)] flex items-center justify-center">
+              <div
+                key={c.id}
+                className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-4 flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4"
+              >
+                <div className="h-10 w-10 rounded-xl bg-bg-2 border border-[color:var(--border)] flex items-center justify-center shrink-0">
                   <Megaphone className="h-4 w-4 text-fg-2" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-semibold truncate">{c.name}</div>
-                  <div className="text-xs text-fg-3 flex items-center gap-3 mt-0.5">
+                  <div className="text-xs text-fg-3 flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
                     <StatusBadge status={c.status} />
                     <span className="flex items-center gap-1">
                       <Users className="h-3 w-3" /> {total}
@@ -94,13 +96,13 @@ export function CampaignsView({ campaigns, contactsCount }: CampaignsViewProps) 
                   </div>
                 </div>
                 {c.status === "completed" && (
-                  <div className="flex items-center gap-4 text-xs">
+                  <div className="flex items-center gap-4 text-xs w-full sm:w-auto order-3 sm:order-2">
                     <Metric label="Entregados" value={stats.delivered ?? 0} />
                     <Metric label="Leídos" value={stats.read ?? 0} />
                     <Metric label="Respondieron" value={stats.replied ?? 0} />
                   </div>
                 )}
-                <Button variant="ghost" size="sm" className="gap-1">
+                <Button variant="ghost" size="sm" className="gap-1 ml-auto sm:ml-0 order-2 sm:order-3">
                   Abrir <ArrowRight className="h-3 w-3" />
                 </Button>
               </div>
@@ -142,14 +144,19 @@ function Composer({ onClose, contactsCount }: { onClose: () => void; contactsCou
   const [schedule, setSchedule] = useState<"now" | "later">("now");
 
   return (
-    <div className="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-6">
+    <div className="fixed inset-0 bg-black/60 z-40 flex items-end md:items-center justify-center md:p-6">
       <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="relative w-full max-w-4xl h-[680px] max-h-[80vh] rounded-2xl border border-[color:var(--border)] bg-bg-1 overflow-hidden flex flex-col"
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+        className={cn(
+          "relative w-full md:max-w-4xl flex flex-col bg-bg-1 overflow-hidden",
+          "h-[92dvh] rounded-t-2xl border-t md:border md:rounded-2xl md:h-[680px] md:max-h-[80dvh]",
+          "border-[color:var(--border)] pb-[env(safe-area-inset-bottom)]"
+        )}
       >
-        <header className="px-6 py-4 border-b border-[color:var(--border)] flex items-center">
-          <h2 className="font-semibold text-lg">Nueva campaña</h2>
+        <header className="px-4 md:px-6 py-3 md:py-4 border-b border-[color:var(--border)] flex items-center gap-2">
+          <h2 className="font-semibold text-base md:text-lg">Nueva campaña</h2>
           <div className="flex-1" />
           <div className="flex items-center gap-1">
             {(["audience", "message", "schedule"] as const).map((s, i) => (
@@ -168,8 +175,8 @@ function Composer({ onClose, contactsCount }: { onClose: () => void; contactsCou
           </div>
         </header>
 
-        <div className="flex-1 grid grid-cols-2 gap-0 min-h-0">
-          <div className="p-6 border-r border-[color:var(--border)] overflow-y-auto flex flex-col gap-4">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-0 min-h-0 overflow-y-auto md:overflow-hidden">
+          <div className="p-4 md:p-6 border-b md:border-b-0 md:border-r border-[color:var(--border)] overflow-y-auto flex flex-col gap-4">
             {step === "audience" && (
               <>
                 <h3 className="font-semibold">¿A quién le enviás?</h3>
@@ -239,12 +246,12 @@ function Composer({ onClose, contactsCount }: { onClose: () => void; contactsCou
               </>
             )}
           </div>
-          <div className="p-6 bg-bg-0 flex items-center justify-center">
+          <div className="hidden md:flex p-6 bg-bg-0 items-center justify-center">
             <MobilePreview message={message || "Escribí tu mensaje para verlo acá."} />
           </div>
         </div>
 
-        <footer className="px-6 py-4 border-t border-[color:var(--border)] flex justify-between">
+        <footer className="px-4 md:px-6 py-3 md:py-4 border-t border-[color:var(--border)] flex justify-between gap-2">
           <Button variant="ghost" onClick={onClose}>
             Cancelar
           </Button>
@@ -272,10 +279,10 @@ function Composer({ onClose, contactsCount }: { onClose: () => void; contactsCou
 
 function MobilePreview({ message }: { message: string }) {
   return (
-    <div className="h-[500px] w-[260px] rounded-[40px] border-[10px] border-bg-3 bg-bg-0 p-4 flex flex-col">
+    <div className="h-[500px] w-[260px] max-w-full rounded-[40px] border-[10px] border-bg-3 bg-bg-0 p-4 flex flex-col">
       <div className="h-4 w-16 rounded-full bg-bg-3 mx-auto mb-3" />
       <div className="flex-1 flex flex-col gap-2">
-        <div className="bg-bg-2 rounded-2xl rounded-tl-md px-3 py-2 text-xs max-w-[85%]">{message}</div>
+        <div className="bg-bg-2 rounded-2xl rounded-tl-md px-3 py-2 text-xs max-w-[85%] break-words">{message}</div>
       </div>
     </div>
   );

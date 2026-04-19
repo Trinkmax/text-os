@@ -37,11 +37,11 @@ export default async function InicioPage() {
   const name = orgRes.data?.owner_display_name?.split(" ")[0] || "Hola";
 
   return (
-    <div className="px-6 lg:px-10 py-8 max-w-6xl mx-auto w-full">
-      <div className="mb-8 flex items-start gap-5">
+    <div className="px-4 sm:px-6 lg:px-10 py-6 md:py-8 max-w-6xl mx-auto w-full">
+      <div className="mb-6 md:mb-8 flex flex-col md:flex-row items-start gap-4 md:gap-5">
         <div className="flex-1 min-w-0">
           <div className="text-fg-3 text-sm mb-1">Buenos días, {name}</div>
-          <h1 className="text-3xl font-bold tracking-tight">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-balance">
             Tu IA manejó <span className="text-[color:var(--accent-green)]">{greenPct}%</span> sola hoy.
           </h1>
         </div>

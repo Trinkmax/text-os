@@ -99,8 +99,8 @@ export function ChannelConnectDialog({ open, onOpenChange, channel }: Props) {
   const m = META[channel.type];
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl p-0 overflow-hidden">
-        <div className="flex items-center gap-3 px-6 pt-6 pb-4 border-b border-[color:var(--border)]">
+      <DialogContent className="sm:max-w-xl p-0 overflow-hidden">
+        <div className="flex items-center gap-3 px-4 sm:px-6 pt-5 sm:pt-6 pb-4 border-b border-[color:var(--border)]">
           <div
             className="h-11 w-11 rounded-xl flex items-center justify-center text-white shrink-0"
             style={{ background: m.color }}
@@ -116,7 +116,7 @@ export function ChannelConnectDialog({ open, onOpenChange, channel }: Props) {
           <StatusPill status={channel.status} />
         </div>
 
-        <div className="px-6 py-5 max-h-[min(78vh,640px)] overflow-y-auto">
+        <div className="px-4 sm:px-6 py-4 sm:py-5 max-h-[min(78dvh,640px)] overflow-y-auto">
           {channel.type === "whatsapp" && (
             <WhatsAppForm channel={channel} onDone={() => onOpenChange(false)} />
           )}
@@ -292,7 +292,7 @@ function WhatsAppForm({ channel, onDone }: { channel: SafeChannel; onDone: () =>
               placeholder="Ej: WhatsApp Ventas"
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <FieldLabel>Phone Number ID</FieldLabel>
               <Input
@@ -398,7 +398,7 @@ function MetaPageForm({ channel, onDone }: { channel: SafeChannel; onDone: () =>
               placeholder={isIg ? "Ej: @minegocio" : "Ej: Página principal"}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <FieldLabel>Page ID</FieldLabel>
               <Input

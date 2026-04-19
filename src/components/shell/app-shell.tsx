@@ -2,6 +2,8 @@
 
 import { Sidebar } from "@/components/shell/sidebar";
 import { AppHeader } from "@/components/shell/header";
+import { MobileTopbar } from "@/components/shell/mobile-topbar";
+import { MobileTabBar } from "@/components/shell/mobile-tab-bar";
 import { useFocus } from "@/components/shell/focus-context";
 import { TexFloating } from "@/components/tex";
 
@@ -31,7 +33,7 @@ export function AppShell({
 }) {
   const { focus } = useFocus();
   return (
-    <div className="flex min-h-screen bg-bg-0 text-fg">
+    <div className="flex min-h-[100dvh] bg-bg-0 text-fg">
       <Sidebar
         orgName={orgName}
         orgLogo={orgLogo}
@@ -42,16 +44,30 @@ export function AppShell({
       />
       <div className="flex-1 flex flex-col min-w-0">
         {!focus && (
-          <AppHeader
-            orgId={orgId}
-            orgName={orgName}
-            userName={userName}
-            userEmail={userEmail}
-            initialCounts={initialCounts}
-          />
+          <>
+            <AppHeader
+              orgId={orgId}
+              orgName={orgName}
+              userName={userName}
+              userEmail={userEmail}
+              initialCounts={initialCounts}
+            />
+            <MobileTopbar
+              orgId={orgId}
+              orgName={orgName}
+              orgLogo={orgLogo}
+              userName={userName}
+              userEmail={userEmail}
+              role={role}
+              memberships={memberships}
+            />
+          </>
         )}
-        <main className="flex-1 flex flex-col min-w-0">{children}</main>
+        <main className="flex-1 flex flex-col min-w-0 pb-[calc(56px+env(safe-area-inset-bottom))] md:pb-0">
+          {children}
+        </main>
       </div>
+      {!focus && <MobileTabBar orgId={orgId} initialCounts={initialCounts} />}
       <TexFloating />
     </div>
   );

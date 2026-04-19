@@ -2,7 +2,7 @@ import { TexSays } from "@/components/tex";
 
 export default function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-bg-0 text-fg flex items-center justify-center p-6">
+    <div className="min-h-[100dvh] bg-bg-0 text-fg flex items-center justify-center p-4 sm:p-6 pt-[max(env(safe-area-inset-top),1rem)] pb-[max(env(safe-area-inset-bottom),1rem)]">
       <div className="w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center">
           <TexSays
@@ -11,7 +11,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             layout="stack"
             position="left"
             tone="info"
-            maxBubbleWidth={260}
+            maxBubbleWidth={240}
             message={
               <span className="text-[13px] leading-snug">
                 Hola, soy <b>Tex</b> 👋

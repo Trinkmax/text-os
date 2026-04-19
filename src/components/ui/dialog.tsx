@@ -33,14 +33,20 @@ export const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-2xl border border-[color:var(--border)] bg-bg-1 p-6 shadow-[var(--shadow-hover)] focus:outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:zoom-in-95 data-[state=closed]:zoom-out-95 data-[state=open]:fade-in-0",
+        // Mobile: bottom sheet spanning full width with safe-area bottom padding.
+        // sm+ (≥640px): center-anchored dialog restored.
+        "fixed z-50 w-full border-[color:var(--border)] bg-bg-1 shadow-[var(--shadow-hover)] focus:outline-none",
+        "inset-x-0 bottom-0 max-h-[92dvh] overflow-y-auto rounded-t-2xl border-t p-5 pb-[max(env(safe-area-inset-bottom),1.25rem)]",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:slide-in-from-bottom data-[state=closed]:slide-out-to-bottom data-[state=open]:fade-in-0",
+        "sm:inset-x-auto sm:bottom-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85dvh] sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-2xl sm:border sm:p-6 sm:pb-6",
+        "sm:data-[state=open]:slide-in-from-bottom-0 sm:data-[state=open]:zoom-in-95 sm:data-[state=closed]:zoom-out-95 sm:data-[state=closed]:slide-out-to-bottom-0",
         className
       )}
       {...props}
     >
       {children}
       {!hideClose && (
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full p-1.5 text-fg-3 hover:bg-bg-3 hover:text-fg">
+        <DialogPrimitive.Close className="absolute right-3 top-3 sm:right-4 sm:top-4 rounded-full p-2 text-fg-3 hover:bg-bg-3 hover:text-fg focus:outline-none focus:ring-2 focus:ring-brand-2/30">
           <X className="h-4 w-4" />
           <span className="sr-only">Cerrar</span>
         </DialogPrimitive.Close>

@@ -80,8 +80,31 @@ export function SettingsView({
 }) {
   const [sec, setSec] = useState(initialSection ?? "ai");
   return (
-    <div className="flex h-[calc(100vh-56px)]">
-      <aside className="w-56 border-r border-[color:var(--border)] bg-bg-1 p-2">
+    <div className="flex flex-col md:flex-row h-[100dvh] md:h-[calc(100dvh-56px)]">
+      {/* Mobile: horizontal pill tabs */}
+      <nav className="md:hidden flex gap-1.5 px-3 py-2 overflow-x-auto no-scrollbar border-b border-[color:var(--border)] bg-bg-1 shrink-0">
+        {SECTIONS.map((s) => {
+          const Icon = s.icon;
+          const active = sec === s.id;
+          return (
+            <button
+              key={s.id}
+              onClick={() => setSec(s.id)}
+              className={cn(
+                "shrink-0 inline-flex items-center gap-1.5 h-10 px-3.5 rounded-full text-sm transition-colors border",
+                active
+                  ? "bg-brand/10 border-brand/40 text-fg"
+                  : "bg-bg-2 border-[color:var(--border)] text-fg-2"
+              )}
+            >
+              <Icon className="h-4 w-4" /> {s.label}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Desktop: vertical sidebar */}
+      <aside className="hidden md:block w-56 border-r border-[color:var(--border)] bg-bg-1 p-2 shrink-0">
         {SECTIONS.map((s) => {
           const Icon = s.icon;
           return (
@@ -98,7 +121,7 @@ export function SettingsView({
           );
         })}
       </aside>
-      <main className="flex-1 overflow-y-auto px-6 lg:px-10 py-8 max-w-3xl">
+      <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-10 py-6 md:py-8 max-w-3xl w-full mx-auto md:mx-0">
         {sec === "ai" && <AISettings org={org} />}
         {sec === "profile" && <ProfileSection org={org} />}
         {sec === "org" && <OrgSection org={org} />}

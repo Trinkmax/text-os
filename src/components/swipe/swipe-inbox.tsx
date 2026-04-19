@@ -217,37 +217,41 @@ export function SwipeInbox({
   const top = cards[0];
 
   return (
-    <div className={cn("relative min-h-[calc(100vh-56px)] flex flex-col", focus && "min-h-screen")}>
+    <div className={cn("relative min-h-[100dvh] md:min-h-[calc(100dvh-56px)] flex flex-col")}>
       {/* Header inside view */}
-      <div className="px-6 pt-5 pb-2 flex items-center justify-between">
+      <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-2 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">Bandeja Swipe</h1>
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Bandeja Swipe</h1>
             <div className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-[rgba(139,92,246,0.1)] text-brand-2 border border-[rgba(139,92,246,0.2)]">
               <Sparkles className="h-3 w-3" /> Modo pareja IA
             </div>
           </div>
-          <div className="text-fg-3 text-sm mt-0.5 flex items-center gap-4">
+          <div className="text-fg-3 text-xs sm:text-sm mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">
             <span>
               <b className="text-fg">{stats.answeredToday}</b> respondidas hoy
             </span>
-            <span className="text-fg-4">·</span>
+            <span className="text-fg-4 hidden sm:inline">·</span>
             <span>
               <b className="text-fg">{stats.learnedToday}</b> aprendidas
             </span>
-            <span className="text-fg-4">·</span>
+            <span className="text-fg-4 hidden sm:inline">·</span>
             <span>
               <b className="text-fg">{cards.length}</b> pendientes
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1 rounded-xl border border-[color:var(--border)] bg-bg-1 p-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1 rounded-xl border border-[color:var(--border)] bg-bg-1 p-1 flex-1 sm:flex-none">
             <TabButton active={tab === "pending"} onClick={() => setTab("pending")}>
-              Para decidir <span className="ml-1.5 text-[10px] font-mono text-fg-4">{cards.length}</span>
+              <span className="sm:hidden">Para decidir</span>
+              <span className="hidden sm:inline">Para decidir</span>
+              <span className="ml-1.5 text-[10px] font-mono text-fg-4">{cards.length}</span>
             </TabButton>
             <TabButton active={tab === "autosent"} onClick={() => setTab("autosent")}>
-              Ver autosends recientes <span className="ml-1.5 text-[10px] font-mono text-fg-4">{autosent.length}</span>
+              <span className="sm:hidden">Autosends</span>
+              <span className="hidden sm:inline">Ver autosends recientes</span>
+              <span className="ml-1.5 text-[10px] font-mono text-fg-4">{autosent.length}</span>
             </TabButton>
           </div>
           <Button
@@ -255,10 +259,11 @@ export function SwipeInbox({
             size="md"
             onClick={() => setFocus(!focus)}
             className="gap-2"
+            aria-label={focus ? "Salir de foco" : "Modo foco"}
           >
             <Focus className="h-4 w-4" />
-            {focus ? "Salir de foco" : "Modo foco"}
-            <Kbd>F</Kbd>
+            <span className="hidden sm:inline">{focus ? "Salir de foco" : "Modo foco"}</span>
+            <Kbd className="hidden sm:inline-flex">F</Kbd>
           </Button>
         </div>
       </div>
@@ -270,8 +275,8 @@ export function SwipeInbox({
           {cards.length === 0 ? (
             <EmptyDeck stats={stats} />
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center pb-16 relative overflow-hidden">
-              <div className="relative w-full max-w-[520px] h-[640px] flex items-center justify-center">
+            <div className="flex-1 flex flex-col items-center justify-center pb-20 sm:pb-24 relative overflow-hidden px-3">
+              <div className="relative w-full max-w-[520px] h-[68dvh] max-h-[640px] min-h-[420px] flex items-center justify-center">
                 <AnimatePresence>
                   {cards.slice(0, 3).map((c, i) => (
                     <SwipeCard
@@ -314,7 +319,7 @@ export function SwipeInbox({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 40, opacity: 0 }}
             transition={{ type: "spring", stiffness: 320, damping: 28 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40"
+            className="fixed left-1/2 -translate-x-1/2 z-40 bottom-[calc(56px+1rem+env(safe-area-inset-bottom))] md:bottom-6 max-w-[calc(100vw-1.5rem)]"
             onAnimationComplete={() => {
               setTimeout(() => {
                 setLastResolution((v) => (v && v.at === lastResolution.at ? null : v));
@@ -361,8 +366,9 @@ function TabButton({
 }
 
 function GestureGuide() {
+  // Hidden on mobile — swipe gestures are self-evident with the direction hints on the card itself.
   return (
-    <div className="absolute bottom-6 left-1/2 -translate-x-1/2 grid grid-cols-4 gap-3 text-fg-4 max-w-[520px] w-full px-6">
+    <div className="hidden sm:grid absolute bottom-6 left-1/2 -translate-x-1/2 grid-cols-4 gap-3 text-fg-4 max-w-[520px] w-full px-6">
       <GestureHint icon={<ArrowLeft className="h-4 w-4" />} label="Descartar" kb="←" />
       <GestureHint icon={<ArrowRight className="h-4 w-4" />} label="Enviar" kb="→" primary />
       <GestureHint icon={<ArrowUp className="h-4 w-4" />} label="Escalar" kb="↑" />
@@ -453,10 +459,10 @@ function AutosendsFeed({
     );
   }
   return (
-    <div className="flex-1 px-6 py-4">
+    <div className="flex-1 px-4 sm:px-6 py-4">
       <div className="text-xs text-fg-3 uppercase tracking-wider font-medium mb-3 flex items-center gap-2">
-        <span className="h-1.5 w-1.5 rounded-full dot-green" />
-        Lo que tu IA mandó sola. Si viste algo mal, dejá feedback 👎 para bajar su confianza.
+        <span className="h-1.5 w-1.5 rounded-full dot-green shrink-0" />
+        <span className="leading-snug normal-case">Lo que tu IA mandó sola. Si viste algo mal, dejá feedback para bajar su confianza.</span>
       </div>
       <div className="max-w-2xl mx-auto flex flex-col gap-2">
         {items.map((a) => (

@@ -51,19 +51,18 @@ export function KnowledgeView({ cards, gaps }: { cards: Card[]; gaps: Gap[] }) {
   }, [cards, search, sort, originFilter]);
 
   return (
-    <div className="px-6 lg:px-10 py-8 max-w-7xl mx-auto w-full">
-      <header className="mb-6 flex items-center gap-3">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight">Memoria de tu IA</h1>
+    <div className="px-4 sm:px-6 lg:px-10 py-6 md:py-8 max-w-7xl mx-auto w-full">
+      <header className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-xl md:text-2xl font-bold tracking-tight">Memoria de tu IA</h1>
             <Badge variant="brand">
               <BrainCircuit className="h-3 w-3" /> {cards.length} tarjetas
             </Badge>
           </div>
           <p className="text-fg-3 text-sm mt-0.5">Acá vive todo lo que tu IA sabe responder. Cada tarjeta es una respuesta reutilizable.</p>
         </div>
-        <div className="flex-1" />
-        <Button className="gap-2" onClick={() => setCreating(true)}>
+        <Button className="gap-2 w-full sm:w-auto" onClick={() => setCreating(true)}>
           <Plus className="h-4 w-4" /> Agregar tarjeta
         </Button>
       </header>
@@ -100,32 +99,41 @@ export function KnowledgeView({ cards, gaps }: { cards: Card[]; gaps: Gap[] }) {
         </section>
       )}
 
-      <div className="mb-4 flex items-center gap-3">
-        <div className="relative flex-1 max-w-md">
+      <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+        <div className="relative flex-1 sm:max-w-md">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-fg-3" />
-          <Input placeholder="Buscar tema, pregunta o respuesta" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9 h-9" />
+          <Input
+            placeholder="Buscar tema, pregunta o respuesta"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-11 sm:h-9"
+            inputMode="search"
+            autoComplete="off"
+          />
         </div>
-        <Select value={originFilter} onValueChange={(v) => setOriginFilter(v as never)}>
-          <SelectTrigger className="w-40 h-9 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            <SelectItem value="onboarding">Onboarding</SelectItem>
-            <SelectItem value="learned">Aprendidas</SelectItem>
-            <SelectItem value="manual">Manuales</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={sort} onValueChange={(v) => setSort(v as never)}>
-          <SelectTrigger className="w-40 h-9 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="usage">Por uso</SelectItem>
-            <SelectItem value="confidence">Por confianza</SelectItem>
-            <SelectItem value="recent">Recientes</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="grid grid-cols-2 sm:flex sm:flex-none gap-2">
+          <Select value={originFilter} onValueChange={(v) => setOriginFilter(v as never)}>
+            <SelectTrigger className="sm:w-40 h-11 sm:h-9 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              <SelectItem value="onboarding">Onboarding</SelectItem>
+              <SelectItem value="learned">Aprendidas</SelectItem>
+              <SelectItem value="manual">Manuales</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sort} onValueChange={(v) => setSort(v as never)}>
+            <SelectTrigger className="sm:w-40 h-11 sm:h-9 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="usage">Por uso</SelectItem>
+              <SelectItem value="confidence">Por confianza</SelectItem>
+              <SelectItem value="recent">Recientes</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">

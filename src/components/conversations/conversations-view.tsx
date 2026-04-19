@@ -5,14 +5,11 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Send,
   Paperclip,
-  Smile,
   Sparkles,
-  User,
-  Clock,
-  StickyNote,
   Workflow,
   Search,
-  Filter,
+  ChevronLeft,
+  UserRound,
 } from "lucide-react";
 import { InstagramIcon, MessengerIcon, WhatsAppIcon, GlobeIcon, MailIcon } from "@/components/ui/brand-icons";
 import { Button } from "@/components/ui/button";
@@ -22,6 +19,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Chip } from "@/components/ui/chip";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { cn, formatRelative, formatTime, initials, avatarGradient, money } from "@/lib/utils";
 import { sendMessage, setConversationAiMode } from "@/app/actions/contacts";
 import { createClient } from "@/lib/supabase/client";
@@ -148,10 +152,22 @@ export function ConversationsView({
     });
   }
 
+  // Mobile flow: only one of list / thread is visible at a time. Tapping a
+  // conversation hides the list; the back arrow re-shows it.
+  // On md (tablet): two panes — list + thread — profile in a Sheet on demand.
+  // On lg+: three panes, identical to before.
+  const showThread = !!selectedId;
+  const showProfileSheetButton = !!selected; // appears on <lg breakpoints
+
   return (
-    <div className="grid grid-cols-[320px_1fr_340px] h-[calc(100vh-56px)] min-h-0">
-      {/* Left: list */}
-      <aside className="border-r border-[color:var(--border)] flex flex-col min-h-0 bg-bg-1">
+    <div className="flex flex-col md:grid md:grid-cols-[320px_1fr] lg:grid-cols-[320px_1fr_340px] h-[100dvh] md:h-[calc(100dvh-56px)] min-h-0">
+      {/* Left: list — hidden on mobile when a thread is selected */}
+      <aside
+        className={cn(
+          "border-r border-[color:var(--border)] flex flex-col min-h-0 bg-bg-1",
+          showThread && "hidden md:flex"
+        )}
+      >
         <div className="px-3 pt-3 pb-2 flex flex-col gap-2">
           <div className="relative">
             <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-fg-3" />
@@ -221,27 +237,39 @@ export function ConversationsView({
         </div>
       </aside>
 
-      {/* Center: thread */}
-      <section className="flex flex-col min-w-0 min-h-0 bg-bg-0">
+      {/* Center: thread — hidden on mobile when no selection */}
+      <section className={cn("flex flex-col min-w-0 min-h-0 bg-bg-0", !showThread && "hidden md:flex")}>
         {selected ? (
           <>
-            <header className="h-14 shrink-0 px-5 flex items-center gap-3 border-b border-[color:var(--border)]">
+            <header className="h-14 shrink-0 px-3 md:px-5 flex items-center gap-2 md:gap-3 border-b border-[color:var(--border)]">
+              <button
+                type="button"
+                onClick={() => setSelectedId(null)}
+                aria-label="Volver a la lista"
+                className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-xl text-fg-2 hover:bg-bg-2 hover:text-fg -ml-2"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
               <div
-                className="h-9 w-9 rounded-full flex items-center justify-center text-white text-sm font-semibold"
+                className="h-9 w-9 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0"
                 style={{ backgroundImage: avatarGradient(selected.contact.name) }}
               >
                 {initials(selected.contact.name)}
               </div>
               <div className="flex-1 min-w-0">
-                <div className="font-medium flex items-center gap-2">
-                  {selected.contact.name}
-                  <span className={`h-2 w-2 rounded-full dot-${selected.semaphore}`} />
+                <div className="font-medium flex items-center gap-2 truncate">
+                  <span className="truncate">{selected.contact.name}</span>
+                  <span className={`h-2 w-2 rounded-full shrink-0 dot-${selected.semaphore}`} />
                 </div>
-                <div className="text-[11px] text-fg-3 flex items-center gap-1.5">
+                <div className="text-[11px] text-fg-3 flex items-center gap-1.5 truncate">
                   <ChannelIcon channel={selected.channel} />
-                  <span>{selected.channel}</span>
-                  <span className="text-fg-4">·</span>
-                  <span>{selected.contact.phone || selected.contact.email || ""}</span>
+                  <span className="truncate">{selected.channel}</span>
+                  {(selected.contact.phone || selected.contact.email) && (
+                    <>
+                      <span className="text-fg-4">·</span>
+                      <span className="truncate">{selected.contact.phone || selected.contact.email}</span>
+                    </>
+                  )}
                 </div>
               </div>
               <Select
@@ -252,8 +280,11 @@ export function ConversationsView({
                   });
                 }}
               >
-                <SelectTrigger className="w-36 h-9 text-xs">
+                <SelectTrigger className="hidden sm:flex w-36 h-9 text-xs">
                   <SelectValue />
+                </SelectTrigger>
+                <SelectTrigger className="sm:hidden h-10 w-10 px-0 justify-center" aria-label="Modo IA">
+                  <Sparkles className="h-4 w-4" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="auto">IA: Auto</SelectItem>
@@ -261,8 +292,36 @@ export function ConversationsView({
                   <SelectItem value="off">IA: Off</SelectItem>
                 </SelectContent>
               </Select>
+              {showProfileSheetButton && (
+                <Sheet>
+                  <SheetTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label="Ver perfil del contacto"
+                      className="lg:hidden inline-flex h-10 w-10 items-center justify-center rounded-xl text-fg-2 hover:bg-bg-2 hover:text-fg"
+                    >
+                      <UserRound className="h-5 w-5" />
+                    </button>
+                  </SheetTrigger>
+                  <SheetContent side="right" className="p-0 w-full sm:max-w-md">
+                    <SheetHeader>
+                      <SheetTitle className="sr-only">Perfil del contacto</SheetTitle>
+                    </SheetHeader>
+                    <div className="flex-1 overflow-y-auto">
+                      <ConversationProfilePanel
+                        selected={selected}
+                        rightTab={rightTab}
+                        setRightTab={setRightTab}
+                      />
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              )}
             </header>
-            <div ref={scrollRef} className="flex-1 overflow-y-auto px-8 py-6 flex flex-col gap-3 no-scrollbar">
+            <div
+              ref={scrollRef}
+              className="flex-1 overflow-y-auto overscroll-contain px-4 md:px-8 py-4 md:py-6 flex flex-col gap-3 no-scrollbar"
+            >
               {messages.map((m, i) => {
                 const prev = messages[i - 1];
                 const sameDate = prev && sameDay(prev.created_at, m.created_at);
@@ -288,7 +347,7 @@ export function ConversationsView({
                       >
                         <div
                           className={cn(
-                            "max-w-[70%] rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed",
+                            "max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-2.5 text-[15px] leading-relaxed break-words",
                             m.direction === "out"
                               ? "bg-brand text-white rounded-tr-md shadow-[0_4px_14px_rgba(139,92,246,0.25)]"
                               : "bg-bg-2 border border-[color:var(--border)] text-fg rounded-tl-md"
@@ -307,12 +366,12 @@ export function ConversationsView({
               })}
               {!messages.length && <div className="py-16 text-center text-sm text-fg-3">Sin mensajes.</div>}
             </div>
-            <footer className="shrink-0 border-t border-[color:var(--border)] bg-bg-1 px-4 py-3">
+            <footer className="shrink-0 border-t border-[color:var(--border)] bg-bg-1 px-3 md:px-4 pt-3 pb-[max(env(safe-area-inset-bottom),0.75rem)]">
               <div className="flex items-end gap-2">
-                <Button size="icon" variant="ghost" className="shrink-0">
+                <Button size="icon" variant="ghost" className="shrink-0" aria-label="Adjuntar archivo">
                   <Paperclip className="h-4 w-4" />
                 </Button>
-                <div className="flex-1 flex flex-col gap-2">
+                <div className="flex-1 min-w-0 flex flex-col gap-2">
                   <Textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
@@ -322,15 +381,28 @@ export function ConversationsView({
                         onSend();
                       }
                     }}
-                    placeholder="Escribí un mensaje o tipeá / para plantillas…"
-                    className="min-h-[48px] p-3 bg-bg-2 resize-none"
+                    placeholder="Escribí un mensaje…"
+                    className="min-h-[44px] p-3 bg-bg-2 resize-none"
                     rows={1}
                   />
                 </div>
-                <Button variant="secondary" onClick={suggestWithAI} className="gap-1.5 shrink-0" size="md">
-                  <Sparkles className="h-3.5 w-3.5" /> Sugerir IA
+                <Button
+                  variant="secondary"
+                  onClick={suggestWithAI}
+                  className="gap-1.5 shrink-0 px-3 sm:px-4"
+                  size="md"
+                  aria-label="Sugerir respuesta con IA"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Sugerir IA</span>
                 </Button>
-                <Button onClick={onSend} disabled={!input.trim() || isPending} size="icon" className="shrink-0">
+                <Button
+                  onClick={onSend}
+                  disabled={!input.trim() || isPending}
+                  size="icon"
+                  className="shrink-0"
+                  aria-label="Enviar mensaje"
+                >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
@@ -343,77 +415,95 @@ export function ConversationsView({
         )}
       </section>
 
-      {/* Right: contact panel */}
-      <aside className="border-l border-[color:var(--border)] flex flex-col min-h-0 bg-bg-1">
+      {/* Right: contact panel — inline only on lg+ */}
+      <aside className="hidden lg:flex border-l border-[color:var(--border)] flex-col min-h-0 bg-bg-1">
         {selected && (
-          <>
-            <div className="px-5 pt-5 pb-3">
-              <div
-                className="h-16 w-16 rounded-2xl flex items-center justify-center text-white text-xl font-semibold mx-auto"
-                style={{ backgroundImage: avatarGradient(selected.contact.name) }}
-              >
-                {initials(selected.contact.name)}
-              </div>
-              <div className="text-center mt-3">
-                <div className="font-semibold">{selected.contact.name}</div>
-                <div className="text-xs text-fg-3">{selected.contact.source || "Ingresó por " + selected.channel}</div>
-              </div>
-            </div>
-            <Tabs value={rightTab} onValueChange={setRightTab} className="flex-1 flex flex-col min-h-0">
-              <div className="px-4">
-                <TabsList className="w-full">
-                  <TabsTrigger value="perfil" className="flex-1">Perfil</TabsTrigger>
-                  <TabsTrigger value="notas" className="flex-1">Notas</TabsTrigger>
-                  <TabsTrigger value="flujo" className="flex-1">Flujo</TabsTrigger>
-                </TabsList>
-              </div>
-              <div className="flex-1 overflow-y-auto px-5 py-4 no-scrollbar">
-                <TabsContent value="perfil" className="mt-0">
-                  <ProfileField label="Etapa" value={<Badge variant="brand">{selected.contact.stage}</Badge>} />
-                  <ProfileField
-                    label="Tags"
-                    value={
-                      <div className="flex flex-wrap gap-1.5">
-                        {selected.contact.tags.length === 0 && <span className="text-fg-3 text-xs">Sin tags</span>}
-                        {selected.contact.tags.map((t) => (
-                          <Chip key={t}>{t}</Chip>
-                        ))}
-                      </div>
-                    }
-                  />
-                  <ProfileField label="Teléfono" value={selected.contact.phone || "—"} />
-                  <ProfileField label="Email" value={selected.contact.email || "—"} />
-                  <ProfileField label="Valor estimado" value={money(selected.contact.value)} />
-                  <ProfileField
-                    label="Última interacción"
-                    value={selected.contact.last_interaction_at ? formatRelative(selected.contact.last_interaction_at) : "—"}
-                  />
-                </TabsContent>
-                <TabsContent value="notas" className="mt-0 flex flex-col gap-2">
-                  <Textarea placeholder="Escribí una nota interna para el equipo…" rows={6} className="bg-bg-2" />
-                  <Button variant="secondary" className="self-end" size="sm">
-                    Guardar nota
-                  </Button>
-                </TabsContent>
-                <TabsContent value="flujo" className="mt-0">
-                  <div className="rounded-xl border border-[color:var(--border)] bg-bg-2 p-4 text-sm text-fg-3">
-                    <div className="flex items-center gap-2 mb-2 text-fg">
-                      <Workflow className="h-4 w-4 text-brand-2" />
-                      <b>Flujo: Atención general</b>
-                    </div>
-                    <div className="flex flex-col gap-2">
-                      <FlowStep label="Saludo" done />
-                      <FlowStep label="Calificación" done />
-                      <FlowStep label="FAQ" active />
-                      <FlowStep label="Agendar" />
-                    </div>
-                  </div>
-                </TabsContent>
-              </div>
-            </Tabs>
-          </>
+          <ConversationProfilePanel
+            selected={selected}
+            rightTab={rightTab}
+            setRightTab={setRightTab}
+          />
         )}
       </aside>
+    </div>
+  );
+}
+
+function ConversationProfilePanel({
+  selected,
+  rightTab,
+  setRightTab,
+}: {
+  selected: Conversation;
+  rightTab: string;
+  setRightTab: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-col min-h-0 h-full">
+      <div className="px-5 pt-5 pb-3">
+        <div
+          className="h-16 w-16 rounded-2xl flex items-center justify-center text-white text-xl font-semibold mx-auto"
+          style={{ backgroundImage: avatarGradient(selected.contact.name) }}
+        >
+          {initials(selected.contact.name)}
+        </div>
+        <div className="text-center mt-3">
+          <div className="font-semibold">{selected.contact.name}</div>
+          <div className="text-xs text-fg-3">{selected.contact.source || "Ingresó por " + selected.channel}</div>
+        </div>
+      </div>
+      <Tabs value={rightTab} onValueChange={setRightTab} className="flex-1 flex flex-col min-h-0">
+        <div className="px-4">
+          <TabsList className="w-full">
+            <TabsTrigger value="perfil" className="flex-1">Perfil</TabsTrigger>
+            <TabsTrigger value="notas" className="flex-1">Notas</TabsTrigger>
+            <TabsTrigger value="flujo" className="flex-1">Flujo</TabsTrigger>
+          </TabsList>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-4 no-scrollbar">
+          <TabsContent value="perfil" className="mt-0">
+            <ProfileField label="Etapa" value={<Badge variant="brand">{selected.contact.stage}</Badge>} />
+            <ProfileField
+              label="Tags"
+              value={
+                <div className="flex flex-wrap gap-1.5 justify-end">
+                  {selected.contact.tags.length === 0 && <span className="text-fg-3 text-xs">Sin tags</span>}
+                  {selected.contact.tags.map((t) => (
+                    <Chip key={t}>{t}</Chip>
+                  ))}
+                </div>
+              }
+            />
+            <ProfileField label="Teléfono" value={selected.contact.phone || "—"} />
+            <ProfileField label="Email" value={selected.contact.email || "—"} />
+            <ProfileField label="Valor estimado" value={money(selected.contact.value)} />
+            <ProfileField
+              label="Última interacción"
+              value={selected.contact.last_interaction_at ? formatRelative(selected.contact.last_interaction_at) : "—"}
+            />
+          </TabsContent>
+          <TabsContent value="notas" className="mt-0 flex flex-col gap-2">
+            <Textarea placeholder="Escribí una nota interna para el equipo…" rows={6} className="bg-bg-2" />
+            <Button variant="secondary" className="self-end" size="sm">
+              Guardar nota
+            </Button>
+          </TabsContent>
+          <TabsContent value="flujo" className="mt-0">
+            <div className="rounded-xl border border-[color:var(--border)] bg-bg-2 p-4 text-sm text-fg-3">
+              <div className="flex items-center gap-2 mb-2 text-fg">
+                <Workflow className="h-4 w-4 text-brand-2" />
+                <b>Flujo: Atención general</b>
+              </div>
+              <div className="flex flex-col gap-2">
+                <FlowStep label="Saludo" done />
+                <FlowStep label="Calificación" done />
+                <FlowStep label="FAQ" active />
+                <FlowStep label="Agendar" />
+              </div>
+            </div>
+          </TabsContent>
+        </div>
+      </Tabs>
     </div>
   );
 }

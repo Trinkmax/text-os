@@ -6,6 +6,7 @@ import { useCommand } from "@/components/shell/command-context";
 import { NAV } from "@/lib/nav";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
+import { cn } from "@/lib/utils";
 import {
   MessageSquarePlus,
   Search,
@@ -86,7 +87,12 @@ export function CommandPalette({ orgId }: { orgId: string }) {
   return (
     <Dialog open={isOpen} onOpenChange={(v) => !v && close()}>
       <DialogContent
-        className="p-0 overflow-hidden max-w-[620px] top-[22%] translate-y-0"
+        className={cn(
+          // Mobile: full-dvh top sheet aligned to top so the keyboard doesn't cover results.
+          "p-0 overflow-hidden inset-x-0 top-0 bottom-auto max-h-[100dvh] h-[100dvh] rounded-none pb-0 pt-[max(env(safe-area-inset-top),0.5rem)]",
+          // Desktop: centered command palette.
+          "sm:max-w-[620px] sm:inset-x-auto sm:top-[22%] sm:bottom-auto sm:h-auto sm:max-h-[60dvh] sm:translate-y-0 sm:rounded-2xl sm:pt-0",
+        )}
         hideClose
       >
         <Command
@@ -105,7 +111,7 @@ export function CommandPalette({ orgId }: { orgId: string }) {
             />
             <Kbd>Esc</Kbd>
           </div>
-          <Command.List className="max-h-[360px] overflow-y-auto p-2">
+          <Command.List className="flex-1 sm:max-h-[360px] overflow-y-auto p-2 overscroll-contain">
             <Command.Empty className="py-12 text-center text-sm text-fg-3">
               Sin coincidencias.
             </Command.Empty>

@@ -61,6 +61,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
             type="email"
             name="email"
             autoComplete="email"
+            inputMode="email"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
             required
             placeholder="vos@empresa.com"
           />

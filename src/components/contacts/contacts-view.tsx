@@ -20,7 +20,20 @@ import { Badge } from "@/components/ui/badge";
 import { Chip } from "@/components/ui/chip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn, initials, avatarGradient, formatRelative, money } from "@/lib/utils";
+import { MoreHorizontal } from "lucide-react";
 import { createContact, updateContactStage, updateContactTags } from "@/app/actions/contacts";
 import { TexMascot, TexSpeechBubble, TEX_COPY } from "@/components/tex";
 
@@ -61,42 +74,70 @@ export function ContactsView({ contacts, stages }: { contacts: Contact[]; stages
   }
 
   return (
-    <div className="flex flex-col min-h-0 h-[calc(100vh-56px)]">
-      <header className="px-6 py-4 flex items-center gap-3 border-b border-[color:var(--border)]">
-        <h1 className="text-2xl font-bold tracking-tight">Contactos</h1>
-        <Badge>{contacts.length}</Badge>
-        <div className="flex-1" />
-        <div className="flex items-center gap-1 rounded-xl border border-[color:var(--border)] bg-bg-1 p-1">
-          <button
-            onClick={() => setView("table")}
-            className={cn("px-3 h-8 rounded-lg text-xs flex items-center gap-1.5 transition", view === "table" ? "bg-bg-3 text-fg font-medium" : "text-fg-3")}
-          >
-            <List className="h-3.5 w-3.5" /> Tabla
-          </button>
-          <button
-            onClick={() => setView("kanban")}
-            className={cn("px-3 h-8 rounded-lg text-xs flex items-center gap-1.5 transition", view === "kanban" ? "bg-bg-3 text-fg font-medium" : "text-fg-3")}
-          >
-            <LayoutGrid className="h-3.5 w-3.5" /> Kanban
-          </button>
+    <div className="flex flex-col min-h-0 h-[100dvh] md:h-[calc(100dvh-56px)]">
+      <header className="px-4 md:px-6 py-3 md:py-4 flex flex-col md:flex-row md:items-center gap-3 border-b border-[color:var(--border)]">
+        <div className="flex items-center gap-2">
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight">Contactos</h1>
+          <Badge>{contacts.length}</Badge>
+          <div className="md:hidden ml-auto">
+            <Button size="icon" onClick={() => setNewOpen(true)} aria-label="Nuevo contacto">
+              <Plus className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
-        <div className="relative">
-          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-fg-3" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar" className="h-9 pl-9 w-64" />
+        <div className="hidden md:block flex-1" />
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-xl border border-[color:var(--border)] bg-bg-1 p-1 shrink-0">
+            <button
+              onClick={() => setView("table")}
+              className={cn("px-3 h-9 md:h-8 rounded-lg text-xs flex items-center gap-1.5 transition", view === "table" ? "bg-bg-3 text-fg font-medium" : "text-fg-3")}
+            >
+              <List className="h-3.5 w-3.5" /> <span>Tabla</span>
+            </button>
+            <button
+              onClick={() => setView("kanban")}
+              className={cn("px-3 h-9 md:h-8 rounded-lg text-xs flex items-center gap-1.5 transition", view === "kanban" ? "bg-bg-3 text-fg font-medium" : "text-fg-3")}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" /> <span>Kanban</span>
+            </button>
+          </div>
+          <div className="relative flex-1 md:flex-none">
+            <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-fg-3" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar"
+              className="h-11 md:h-9 pl-9 md:w-64"
+              inputMode="search"
+              autoComplete="off"
+            />
+          </div>
         </div>
-        <Button className="gap-2" onClick={() => setNewOpen(true)}>
+        <Button className="hidden md:inline-flex gap-2" onClick={() => setNewOpen(true)}>
           <Plus className="h-4 w-4" /> Nuevo contacto
         </Button>
       </header>
 
       {selected.length > 0 && (
-        <div className="px-6 py-2 bg-[rgba(139,92,246,0.08)] border-b border-[color:var(--border)] flex items-center gap-3 text-sm">
-          <span className="text-brand-2 font-medium">{selected.length} seleccionados</span>
-          <Button size="sm" variant="secondary">Agregar tag</Button>
-          <Button size="sm" variant="secondary">Cambiar etapa</Button>
-          <Button size="sm" variant="secondary">Enviar broadcast</Button>
-          <div className="flex-1" />
-          <button onClick={() => setSelected([])} className="text-xs text-fg-3 hover:text-fg">
+        <div className="px-4 md:px-6 py-2 bg-[rgba(139,92,246,0.08)] border-b border-[color:var(--border)] flex items-center gap-2 md:gap-3 text-sm overflow-x-auto no-scrollbar">
+          <span className="text-brand-2 font-medium shrink-0">{selected.length} sel.</span>
+          <Button size="sm" variant="secondary" className="shrink-0">Tag</Button>
+          <Button size="sm" variant="secondary" className="shrink-0">Etapa</Button>
+          <Button size="sm" variant="secondary" className="hidden sm:inline-flex shrink-0">
+            Enviar broadcast
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="icon-sm" variant="ghost" className="sm:hidden shrink-0" aria-label="Más acciones">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>Enviar broadcast</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <div className="flex-1 hidden md:block" />
+          <button onClick={() => setSelected([])} className="text-xs text-fg-3 hover:text-fg shrink-0 ml-auto md:ml-0">
             Limpiar
           </button>
         </div>
@@ -110,72 +151,55 @@ export function ContactsView({ contacts, stages }: { contacts: Contact[]; stages
         )}
       </div>
 
-      {/* Side panel */}
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/40 z-40"
-            onClick={() => setOpen(null)}
-          />
-        )}
-        {open && (
-          <motion.aside
-            key={open.id}
-            initial={{ x: 480 }}
-            animate={{ x: 0 }}
-            exit={{ x: 480 }}
-            transition={{ type: "spring", stiffness: 280, damping: 30 }}
-            className="fixed top-0 right-0 bottom-0 w-[480px] bg-bg-1 border-l border-[color:var(--border)] z-50 shadow-[var(--shadow-hover)] flex flex-col"
-          >
-            <div className="px-6 pt-6 pb-4 flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div
-                  className="h-14 w-14 rounded-2xl flex items-center justify-center text-white text-lg font-bold"
-                  style={{ backgroundImage: avatarGradient(open.name) }}
-                >
-                  {initials(open.name)}
+      {/* Detail Sheet — slides from right, full-width on mobile, max-md on desktop */}
+      <Sheet open={!!open} onOpenChange={(v) => !v && setOpen(null)}>
+        <SheetContent side="right" className="p-0 w-full sm:max-w-md">
+          {open && (
+            <>
+              <SheetHeader>
+                <div className="flex items-center gap-3">
+                  <div
+                    className="h-12 w-12 rounded-2xl flex items-center justify-center text-white text-base font-bold shrink-0"
+                    style={{ backgroundImage: avatarGradient(open.name) }}
+                  >
+                    {initials(open.name)}
+                  </div>
+                  <div className="min-w-0">
+                    <SheetTitle className="truncate">{open.name}</SheetTitle>
+                    <div className="text-xs text-fg-3">{open.stage}</div>
+                  </div>
                 </div>
-                <div>
-                  <div className="text-lg font-semibold">{open.name}</div>
-                  <div className="text-xs text-fg-3">{open.stage}</div>
-                </div>
-              </div>
-              <button onClick={() => setOpen(null)} className="text-fg-3 hover:text-fg rounded-full p-2 hover:bg-bg-2">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="px-6 flex-1 overflow-y-auto">
-              <dl className="flex flex-col gap-0">
-                <FieldRow label="Teléfono" value={open.phone} icon={<Phone className="h-4 w-4" />} />
-                <FieldRow label="Email" value={open.email} icon={<Mail className="h-4 w-4" />} />
-                <FieldRow label="Canal" value={open.channel} icon={<User className="h-4 w-4" />} />
-                <FieldRow label="Fuente" value={open.source} />
-                <FieldRow label="Valor" value={money(open.value)} />
-                <FieldRow label="Última interacción" value={formatRelative(open.last_interaction_at)} />
-              </dl>
-              <div className="mt-6">
-                <div className="text-xs uppercase tracking-wider text-fg-3 font-medium mb-2 flex items-center gap-2">
-                  <Tag className="h-3 w-3" /> Tags
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {open.tags.length === 0 && <span className="text-xs text-fg-3">Sin tags todavía.</span>}
-                  {open.tags.map((t) => (
-                    <Chip key={t}>{t}</Chip>
-                  ))}
+              </SheetHeader>
+              <div className="px-5 flex-1 overflow-y-auto py-4">
+                <dl className="flex flex-col gap-0">
+                  <FieldRow label="Teléfono" value={open.phone} icon={<Phone className="h-4 w-4" />} />
+                  <FieldRow label="Email" value={open.email} icon={<Mail className="h-4 w-4" />} />
+                  <FieldRow label="Canal" value={open.channel} icon={<User className="h-4 w-4" />} />
+                  <FieldRow label="Fuente" value={open.source} />
+                  <FieldRow label="Valor" value={money(open.value)} />
+                  <FieldRow label="Última interacción" value={formatRelative(open.last_interaction_at)} />
+                </dl>
+                <div className="mt-6">
+                  <div className="text-xs uppercase tracking-wider text-fg-3 font-medium mb-2 flex items-center gap-2">
+                    <Tag className="h-3 w-3" /> Tags
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {open.tags.length === 0 && <span className="text-xs text-fg-3">Sin tags todavía.</span>}
+                    {open.tags.map((t) => (
+                      <Chip key={t}>{t}</Chip>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="p-4 border-t border-[color:var(--border)]">
-              <Button asChild className="w-full">
-                <a href={`/conversaciones?open=${open.id}`}>Ver conversaciones</a>
-              </Button>
-            </div>
-          </motion.aside>
-        )}
-      </AnimatePresence>
+              <div className="p-4 border-t border-[color:var(--border)]">
+                <Button asChild className="w-full">
+                  <a href={`/conversaciones?open=${open.id}`}>Ver conversaciones</a>
+                </Button>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
 
       <NewContactModal open={newOpen} onClose={() => setNewOpen(false)} />
     </div>
@@ -193,75 +217,135 @@ function TableView({
   toggle: (id: string) => void;
   onOpen: (c: Contact) => void;
 }) {
+  if (!contacts.length) {
+    return (
+      <div className="py-12">
+        <div className="flex flex-col items-center gap-3 px-4">
+          <TexMascot variant="default" size="lg" popIn idle />
+          <TexSpeechBubble tail="top-left" tone="info" maxWidth={360}>
+            <span className="text-[13px]">{TEX_COPY.empty.noContacts}</span>
+          </TexSpeechBubble>
+        </div>
+      </div>
+    );
+  }
   return (
-    <table className="w-full text-sm">
-      <thead className="sticky top-0 bg-bg-0 z-10 border-b border-[color:var(--border)]">
-        <tr className="text-left text-[11px] uppercase tracking-wider text-fg-3">
-          <th className="w-10 px-4 py-3"></th>
-          <th className="px-3 py-3 font-medium">Nombre</th>
-          <th className="px-3 py-3 font-medium">Canal</th>
-          <th className="px-3 py-3 font-medium">Etapa</th>
-          <th className="px-3 py-3 font-medium">Tags</th>
-          <th className="px-3 py-3 font-medium">Valor</th>
-          <th className="px-3 py-3 font-medium">Última</th>
-        </tr>
-      </thead>
-      <tbody>
-        {contacts.map((c) => (
-          <tr
-            key={c.id}
-            onClick={() => onOpen(c)}
-            className="border-b border-[color:var(--border)] hover:bg-bg-1 cursor-pointer transition-colors"
-          >
-            <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-              <Checkbox checked={selected.includes(c.id)} onCheckedChange={() => toggle(c.id)} />
-            </td>
-            <td className="px-3 py-3">
-              <div className="flex items-center gap-3">
+    <>
+      {/* Mobile: card list */}
+      <ul className="md:hidden flex flex-col divide-y divide-[color:var(--border)]">
+        {contacts.map((c) => {
+          const isSel = selected.includes(c.id);
+          return (
+            <li
+              key={c.id}
+              className={cn(
+                "flex items-start gap-3 px-4 py-3 active:bg-bg-2 transition-colors",
+                isSel && "bg-[rgba(139,92,246,0.06)]"
+              )}
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggle(c.id);
+                }}
+                aria-label="Seleccionar"
+                className="pt-1 shrink-0"
+              >
+                <Checkbox checked={isSel} onCheckedChange={() => toggle(c.id)} />
+              </button>
+              <button
+                type="button"
+                onClick={() => onOpen(c)}
+                className="flex-1 min-w-0 text-left flex items-start gap-3"
+              >
                 <div
-                  className="h-8 w-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold shrink-0"
+                  className="h-11 w-11 rounded-full flex items-center justify-center text-white text-sm font-semibold shrink-0"
                   style={{ backgroundImage: avatarGradient(c.name) }}
                 >
                   {initials(c.name)}
                 </div>
-                <div>
-                  <div className="font-medium text-fg">{c.name}</div>
-                  <div className="text-[11px] text-fg-3">{c.phone || c.email || "—"}</div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <div className="font-medium text-fg truncate flex-1">{c.name}</div>
+                    <div className="text-[11px] text-fg-3 shrink-0">{formatRelative(c.last_interaction_at)}</div>
+                  </div>
+                  <div className="text-xs text-fg-3 truncate mt-0.5">{c.phone || c.email || c.channel || "—"}</div>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <Badge variant="brand">{c.stage}</Badge>
+                    {c.tags.slice(0, 2).map((t) => (
+                      <Chip key={t}>{t}</Chip>
+                    ))}
+                    {c.tags.length > 2 && (
+                      <span className="text-[11px] text-fg-3">+{c.tags.length - 2}</span>
+                    )}
+                    {c.value > 0 && (
+                      <span className="ml-auto font-mono tabular-nums text-xs text-fg">{money(c.value)}</span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </td>
-            <td className="px-3 py-3 text-fg-2">{c.channel || "—"}</td>
-            <td className="px-3 py-3">
-              <Badge variant="brand">{c.stage}</Badge>
-            </td>
-            <td className="px-3 py-3">
-              <div className="flex flex-wrap gap-1">
-                {c.tags.slice(0, 3).map((t) => (
-                  <Chip key={t}>{t}</Chip>
-                ))}
-                {c.tags.length > 3 && <span className="text-[11px] text-fg-3">+{c.tags.length - 3}</span>}
-              </div>
-            </td>
-            <td className="px-3 py-3 font-mono tabular-nums text-fg">{money(c.value)}</td>
-            <td className="px-3 py-3 text-fg-3 text-xs">{formatRelative(c.last_interaction_at)}</td>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+
+      {/* Desktop: full table */}
+      <table className="hidden md:table w-full text-sm">
+        <thead className="sticky top-0 bg-bg-0 z-10 border-b border-[color:var(--border)]">
+          <tr className="text-left text-[11px] uppercase tracking-wider text-fg-3">
+            <th className="w-10 px-4 py-3"></th>
+            <th className="px-3 py-3 font-medium">Nombre</th>
+            <th className="px-3 py-3 font-medium">Canal</th>
+            <th className="px-3 py-3 font-medium">Etapa</th>
+            <th className="px-3 py-3 font-medium">Tags</th>
+            <th className="px-3 py-3 font-medium">Valor</th>
+            <th className="px-3 py-3 font-medium">Última</th>
           </tr>
-        ))}
-      </tbody>
-      {!contacts.length && (
+        </thead>
         <tbody>
-          <tr>
-            <td colSpan={7} className="py-12">
-              <div className="flex flex-col items-center gap-3">
-                <TexMascot variant="default" size="lg" popIn idle />
-                <TexSpeechBubble tail="top-left" tone="info" maxWidth={360}>
-                  <span className="text-[13px]">{TEX_COPY.empty.noContacts}</span>
-                </TexSpeechBubble>
-              </div>
-            </td>
-          </tr>
+          {contacts.map((c) => (
+            <tr
+              key={c.id}
+              onClick={() => onOpen(c)}
+              className="border-b border-[color:var(--border)] hover:bg-bg-1 cursor-pointer transition-colors"
+            >
+              <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                <Checkbox checked={selected.includes(c.id)} onCheckedChange={() => toggle(c.id)} />
+              </td>
+              <td className="px-3 py-3">
+                <div className="flex items-center gap-3">
+                  <div
+                    className="h-8 w-8 rounded-full flex items-center justify-center text-white text-[11px] font-semibold shrink-0"
+                    style={{ backgroundImage: avatarGradient(c.name) }}
+                  >
+                    {initials(c.name)}
+                  </div>
+                  <div>
+                    <div className="font-medium text-fg">{c.name}</div>
+                    <div className="text-[11px] text-fg-3">{c.phone || c.email || "—"}</div>
+                  </div>
+                </div>
+              </td>
+              <td className="px-3 py-3 text-fg-2">{c.channel || "—"}</td>
+              <td className="px-3 py-3">
+                <Badge variant="brand">{c.stage}</Badge>
+              </td>
+              <td className="px-3 py-3">
+                <div className="flex flex-wrap gap-1">
+                  {c.tags.slice(0, 3).map((t) => (
+                    <Chip key={t}>{t}</Chip>
+                  ))}
+                  {c.tags.length > 3 && <span className="text-[11px] text-fg-3">+{c.tags.length - 3}</span>}
+                </div>
+              </td>
+              <td className="px-3 py-3 font-mono tabular-nums text-fg">{money(c.value)}</td>
+              <td className="px-3 py-3 text-fg-3 text-xs">{formatRelative(c.last_interaction_at)}</td>
+            </tr>
+          ))}
         </tbody>
-      )}
-    </table>
+      </table>
+    </>
   );
 }
 
@@ -288,7 +372,7 @@ function KanbanView({
   const [dragging, setDragging] = useState<string | null>(null);
 
   return (
-    <div className="flex gap-3 p-4 min-h-full">
+    <div className="flex gap-3 p-3 md:p-4 min-h-full overflow-x-auto snap-x snap-mandatory md:snap-none">
       {stages.map((s) => (
         <div
           key={s.id}
@@ -302,7 +386,7 @@ function KanbanView({
             });
             setDragging(null);
           }}
-          className="w-72 shrink-0 bg-bg-1 rounded-2xl border border-[color:var(--border)] flex flex-col"
+          className="w-[85vw] sm:w-72 shrink-0 bg-bg-1 rounded-2xl border border-[color:var(--border)] flex flex-col snap-start md:snap-align-none"
         >
           <header className="px-3 py-3 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -374,10 +458,25 @@ function NewContactModal({ open, onClose }: { open: boolean; onClose: () => void
             placeholder="Nombre completo"
             value={form.name}
             onChange={(e) => setForm({ ...form, name: e.target.value })}
+            autoComplete="name"
           />
-          <div className="grid grid-cols-2 gap-2">
-            <Input placeholder="Teléfono" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-            <Input placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <Input
+              placeholder="Teléfono"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              type="tel"
+              inputMode="tel"
+              autoComplete="tel"
+            />
+            <Input
+              placeholder="Email"
+              value={form.email}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+            />
           </div>
         </div>
         <DialogFooter>

@@ -32,14 +32,13 @@ interface AlertsViewProps {
 export function AlertsView({ alerts: initialAlerts }: AlertsViewProps) {
   const [alerts, setAlerts] = useState<Alert[]>(initialAlerts);
   return (
-    <div className="px-6 lg:px-10 py-8 max-w-4xl mx-auto w-full">
-      <header className="mb-4 flex items-center gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Alertas</h1>
+    <div className="px-4 sm:px-6 lg:px-10 py-6 md:py-8 max-w-4xl mx-auto w-full">
+      <header className="mb-4 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight">Alertas</h1>
           <p className="text-fg-3 text-sm mt-0.5">Reglas en lenguaje humano. Si pasa X, te avisamos por Y.</p>
         </div>
-        <div className="flex-1" />
-        <Button className="gap-2">
+        <Button className="gap-2 w-full sm:w-auto">
           <Plus className="h-4 w-4" /> Nueva alerta
         </Button>
       </header>
@@ -83,8 +82,9 @@ export function AlertsView({ alerts: initialAlerts }: AlertsViewProps) {
                     onCheckedChange={(v) =>
                       setAlerts((rs) => rs.map((x) => (x.id === r.id ? { ...x, enabled: v } : x)))
                     }
+                    className="mt-1 shrink-0"
                   />
-                  <div className="flex-1 flex flex-wrap items-center gap-1.5 text-sm">
+                  <div className="flex-1 min-w-0 flex flex-wrap items-center gap-1.5 text-[13px] sm:text-sm">
                     <span className="text-fg-3">Si</span>
                     {c.target && <Pill>{c.target}</Pill>}
                     {c.condition && <Pill>{c.condition}</Pill>}
@@ -103,8 +103,13 @@ export function AlertsView({ alerts: initialAlerts }: AlertsViewProps) {
                       </Pill>
                     ))}
                   </div>
-                  <Button variant="ghost" size="icon-sm" className="text-fg-3 hover:text-[color:var(--accent-red)]">
-                    <Trash2 className="h-3.5 w-3.5" />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-fg-3 hover:text-[color:var(--accent-red)] shrink-0"
+                    aria-label="Eliminar alerta"
+                  >
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>

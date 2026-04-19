@@ -33,7 +33,7 @@ export function Sidebar({
       <motion.aside
         animate={{ width: compact ? 68 : 248 }}
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
-        className="sticky top-0 h-screen flex flex-col bg-bg-1 border-r border-[color:var(--border)] shrink-0 overflow-hidden z-20"
+        className="hidden md:flex sticky top-0 h-[100dvh] flex-col bg-bg-1 border-r border-[color:var(--border)] shrink-0 overflow-hidden z-20"
       >
         <div className="flex items-center h-14 px-2 border-b border-[color:var(--border)] shrink-0">
           <OrgSwitcher

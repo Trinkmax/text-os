@@ -58,7 +58,14 @@ export function TexFloating() {
   if (!mounted || dismissed || focus) return null;
 
   return (
-    <div className={cn("fixed bottom-5 right-5 z-30 flex items-end gap-2 pointer-events-none")}>
+    <div
+      className={cn(
+        "fixed z-30 flex items-end gap-2 pointer-events-none",
+        // Sit above the mobile tab bar + iOS home indicator on phones; revert to bottom-right on desktop.
+        "right-[max(env(safe-area-inset-right),1rem)]",
+        "bottom-[calc(56px+1rem+env(safe-area-inset-bottom))] md:bottom-5 md:right-5",
+      )}
+    >
       <AnimatePresence>
         {open && (
           <motion.div

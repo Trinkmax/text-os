@@ -46,15 +46,14 @@ export function ReportsView({
         : TEX_COPY.analytics.roomToGrow;
 
   return (
-    <div className="px-6 lg:px-10 py-8 max-w-6xl mx-auto w-full">
-      <header className="mb-6 flex items-center gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Reportes</h1>
+    <div className="px-4 sm:px-6 lg:px-10 py-6 md:py-8 max-w-6xl mx-auto w-full">
+      <header className="mb-6 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl md:text-2xl font-bold tracking-tight">Reportes</h1>
           <p className="text-fg-3 text-sm mt-0.5">Lo que hizo tu IA. Lo que te falta enseñarle.</p>
         </div>
-        <div className="flex-1" />
         <Select value={range} onValueChange={setRange}>
-          <SelectTrigger className="w-36 h-9 text-xs">
+          <SelectTrigger className="w-full sm:w-36 h-11 sm:h-9 text-xs">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
