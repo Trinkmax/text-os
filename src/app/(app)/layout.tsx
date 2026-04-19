@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
-import { getCurrentOrgId } from "@/lib/org";
+import { getActiveOrg } from "@/lib/org";
 import { createSbServer } from "@/lib/supabase/server";
-import { Sidebar } from "@/components/shell/sidebar";
-import { AppHeader } from "@/components/shell/header";
 import { CommandProvider } from "@/components/shell/command-context";
 import { CommandPalette } from "@/components/shell/command-palette";
 import { NavShortcuts } from "@/components/shell/nav-shortcuts";
@@ -10,23 +8,21 @@ import { FocusProvider } from "@/components/shell/focus-context";
 import { AppShell } from "@/components/shell/app-shell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
-  const orgId = await getCurrentOrgId();
-  if (!orgId) redirect("/onboarding");
+  const active = await getActiveOrg();
+  if (!active) redirect("/onboarding");
+  if (!active.org.onboarding_completed) redirect("/onboarding");
+
+  const { org, role, memberships } = active;
 
   const sb = await createSbServer();
-  const { data: org } = await sb
-    .from("textos_orgs")
-    .select("id,name,logo_url,owner_display_name,onboarding_completed")
-    .eq("id", orgId)
-    .single();
-
-  if (!org) redirect("/onboarding");
-  if (!org.onboarding_completed) redirect("/onboarding");
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
 
   const { data: sugs } = await sb
     .from("textos_suggestions")
     .select("semaphore,status")
-    .eq("org_id", orgId)
+    .eq("org_id", org.id)
     .in("status", ["pending", "auto_sent"]);
 
   const counts = { green: 0, amber: 0, red: 0 };
@@ -43,13 +39,16 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <AppShell
           orgName={org.name}
           orgLogo={org.logo_url}
-          userName={org.owner_display_name || "Tú"}
-          orgId={orgId}
+          userName={org.owner_display_name || user?.email?.split("@")[0] || "Tú"}
+          userEmail={user?.email ?? ""}
+          orgId={org.id}
+          role={role}
+          memberships={memberships}
           initialCounts={counts}
         >
           {children}
         </AppShell>
-        <CommandPalette orgId={orgId} />
+        <CommandPalette orgId={org.id} />
       </FocusProvider>
     </CommandProvider>
   );

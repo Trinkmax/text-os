@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createSbServer } from "@/lib/supabase/server";
-import { setCurrentOrgId, clearCurrentOrgId } from "@/lib/org";
+import { setCurrentOrgId, clearCurrentOrgId, requireOrgId } from "@/lib/org";
 import { DEMO_DATA, type DemoIndustry } from "@/lib/demo-seed";
 
 type OnboardingPayload = {
@@ -23,8 +23,17 @@ type OnboardingPayload = {
   channelsToConnect: string[];
 };
 
-export async function completeOnboarding(payload: OnboardingPayload) {
+async function requireUser() {
   const sb = await createSbServer();
+  const {
+    data: { user },
+  } = await sb.auth.getUser();
+  if (!user) throw new Error("No autenticado");
+  return { sb, user };
+}
+
+export async function completeOnboarding(payload: OnboardingPayload) {
+  const { sb } = await requireUser();
 
   const { data: org, error } = await sb
     .from("textos_orgs")
@@ -66,14 +75,16 @@ export async function completeOnboarding(payload: OnboardingPayload) {
     }));
   if (cards.length) await sb.from("textos_knowledge_cards").insert(cards);
 
-  // Channels (pending)
   if (payload.channelsToConnect.length) {
-    await sb
-      .from("textos_channels")
-      .insert(payload.channelsToConnect.map((type) => ({ org_id: org.id, type: type as never, status: "pending" as const })));
+    await sb.from("textos_channels").insert(
+      payload.channelsToConnect.map((type) => ({
+        org_id: org.id,
+        type: type as never,
+        status: "pending" as const,
+      })),
+    );
   }
 
-  // Default stages
   await sb.from("textos_stages").insert([
     { org_id: org.id, name: "Nuevo lead", color: "#64748B", position: 0 },
     { org_id: org.id, name: "En conversación", color: "#3B82F6", position: 1 },
@@ -87,10 +98,10 @@ export async function completeOnboarding(payload: OnboardingPayload) {
 
 function estimateCoverage(p: OnboardingPayload) {
   let score = 0;
-  score += Math.min(p.topQuestions.filter((q) => q.trim()).length, 5) * 10; // 50 pts
-  score += Math.min(Object.values(p.answers).filter((a) => a.trim().length > 10).length, 5) * 6; // 30 pts
-  score += Math.min(p.neverPromise.length, 3) * 3; // 9 pts
-  score += Math.min(p.mustEscalate.length, 3) * 3; // 9 pts
+  score += Math.min(p.topQuestions.filter((q) => q.trim()).length, 5) * 10;
+  score += Math.min(Object.values(p.answers).filter((a) => a.trim().length > 10).length, 5) * 6;
+  score += Math.min(p.neverPromise.length, 3) * 3;
+  score += Math.min(p.mustEscalate.length, 3) * 3;
   if (p.sampleMessages.filter((m) => m.trim().length > 5).length >= 3) score += 8;
   if (p.channelsToConnect.length) score += 4;
   return Math.min(Math.round(score), 92);
@@ -109,10 +120,10 @@ function inferTopic(q: string) {
 }
 
 export async function seedDemo(industry: DemoIndustry) {
-  const sb = await createSbServer();
+  const { sb } = await requireUser();
   const d = DEMO_DATA[industry];
 
-  const { data: org } = await sb
+  const { data: org, error } = await sb
     .from("textos_orgs")
     .insert({
       name: d.orgName,
@@ -129,14 +140,15 @@ export async function seedDemo(industry: DemoIndustry) {
     .select("id")
     .single();
 
-  if (!org) throw new Error("No se pudo crear demo");
+  if (error || !org) throw new Error(error?.message || "No se pudo crear demo");
   await setCurrentOrgId(org.id);
 
-  // Stages
-  await sb.from("textos_stages").insert(d.stages.map((s, i) => ({ org_id: org.id, name: s.name, color: s.color, position: i })));
-  // Tags
-  await sb.from("textos_tag_catalog").insert(d.tags.map((t) => ({ org_id: org.id, name: t.name, color: t.color })));
-  // Knowledge
+  await sb.from("textos_stages").insert(
+    d.stages.map((s, i) => ({ org_id: org.id, name: s.name, color: s.color, position: i })),
+  );
+  await sb.from("textos_tag_catalog").insert(
+    d.tags.map((t) => ({ org_id: org.id, name: t.name, color: t.color })),
+  );
   await sb.from("textos_knowledge_cards").insert(
     d.knowledge.map((k) => ({
       org_id: org.id,
@@ -147,17 +159,15 @@ export async function seedDemo(industry: DemoIndustry) {
       confidence: k.confidence,
       origin: "onboarding" as const,
       usage_count: Math.floor(Math.random() * 40) + 5,
-    }))
+    })),
   );
 
-  // Scope gaps seed
   await sb.from("textos_scope_gaps").insert([
     { org_id: org.id, topic: "Productos recomendados", sample_question: "Qué crema me recomendó el barbero?", count: 3 },
     { org_id: org.id, topic: "Combos promocionales", sample_question: "Hay paquetes corte + barba?", count: 2 },
     { org_id: org.id, topic: "Gift card", sample_question: "Venden gift card para regalar?", count: 1 },
   ]);
 
-  // Conversations + messages + suggestions
   for (const conv of d.conversations) {
     const { data: contact } = await sb
       .from("textos_contacts")
@@ -201,7 +211,6 @@ export async function seedDemo(industry: DemoIndustry) {
       });
     }
 
-    // Generate a suggestion for the latest inbound message if provided
     if (conv.suggestion) {
       const lastInbound = [...conv.messages].reverse().find((m) => m.direction === "in");
       await sb.from("textos_suggestions").insert({
@@ -228,7 +237,6 @@ export async function seedDemo(industry: DemoIndustry) {
     }
   }
 
-  // Quick replies
   await sb.from("textos_quick_replies").insert([
     { org_id: org.id, shortcut: "horarios", body: "Abrimos de lunes a sábados de 10 a 20." },
     { org_id: org.id, shortcut: "direccion", body: "Estamos en Thames 1850, Palermo." },
@@ -239,7 +247,20 @@ export async function seedDemo(industry: DemoIndustry) {
   return { ok: true, orgId: org.id };
 }
 
-export async function resetDemo() {
+export async function leaveCurrentOrg() {
+  const orgId = await requireOrgId();
+  const { sb, user } = await requireUser();
+  await sb
+    .from("textos_org_members")
+    .delete()
+    .eq("org_id", orgId)
+    .eq("user_id", user.id);
   await clearCurrentOrgId();
-  redirect("/onboarding");
+  revalidatePath("/", "layout");
+  redirect("/");
+}
+
+export async function resetDemoSession() {
+  await clearCurrentOrgId();
+  revalidatePath("/", "layout");
 }

@@ -1,14 +1,10 @@
-import { TexOnboarding } from "@/components/onboarding/tex-onboarding";
-import { getCurrentOrgId } from "@/lib/org";
-import { createSbServer } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { TexOnboarding } from "@/components/onboarding/tex-onboarding";
+import { getActiveOrg } from "@/lib/org";
 
 export default async function OnboardingPage() {
-  const existing = await getCurrentOrgId();
-  if (existing) {
-    const sb = await createSbServer();
-    const { data } = await sb.from("textos_orgs").select("onboarding_completed").eq("id", existing).maybeSingle();
-    if (data?.onboarding_completed) redirect("/inicio");
-  }
+  const active = await getActiveOrg();
+  // If the user already has a fully set-up org, send them home.
+  if (active?.org.onboarding_completed) redirect("/inicio");
   return <TexOnboarding />;
 }

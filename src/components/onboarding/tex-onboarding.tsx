@@ -281,9 +281,9 @@ export function TexOnboarding() {
 
       <div className="flex-1 grid lg:grid-cols-[1fr_380px] relative z-10 gap-0 overflow-hidden">
         {/* Left: chat column */}
-        <div className="flex flex-col h-[calc(100vh-80px)]">
-          <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 md:px-16 lg:px-24 pt-6 pb-6 no-scrollbar">
-            <div className="max-w-2xl mx-auto flex flex-col gap-4">
+        <div className="flex h-[calc(100vh-80px)] min-h-0">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 pt-6 pb-12 no-scrollbar">
+            <div className="max-w-[640px] mx-auto flex flex-col gap-4">
               <AnimatePresence initial={false}>
                 {history.map((t) => (
                   <MessageBubble key={t.id} from={t.from} text={t.text} />
@@ -321,10 +321,10 @@ function MessageBubble({ from, text }: { from: "tex" | "user"; text: string }) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 280, damping: 24 }}
-        className="flex gap-3 items-start"
+        className="flex"
       >
-        <TexAvatar />
-        <div className="max-w-[80%] rounded-2xl rounded-tl-md px-4 py-3 bg-bg-2 border border-[color:var(--border)] text-fg leading-relaxed">
+        {/* La colita apunta abajo-izquierda, hacia la mascota */}
+        <div className="max-w-[88%] rounded-2xl rounded-bl-sm px-5 py-3 bg-bg-2 border border-[color:var(--border)] text-fg leading-relaxed">
           {text}
         </div>
       </motion.div>
@@ -337,7 +337,7 @@ function MessageBubble({ from, text }: { from: "tex" | "user"; text: string }) {
       transition={{ type: "spring", stiffness: 280, damping: 24 }}
       className="flex justify-end"
     >
-      <div className="max-w-[80%] rounded-2xl rounded-tr-md px-4 py-3 bg-brand text-white leading-relaxed shadow-[0_4px_20px_rgba(139,92,246,0.35)]">
+      <div className="max-w-[88%] rounded-2xl rounded-br-sm px-5 py-3 bg-brand text-white leading-relaxed shadow-[0_4px_20px_rgba(139,92,246,0.35)]">
         {text}
       </div>
     </motion.div>
@@ -346,21 +346,12 @@ function MessageBubble({ from, text }: { from: "tex" | "user"; text: string }) {
 
 function TypingBubble() {
   return (
-    <div className="flex gap-3 items-start">
-      <TexAvatar />
-      <div className="rounded-2xl rounded-tl-md px-4 py-3 bg-bg-2 border border-[color:var(--border)] flex items-center gap-1.5">
+    <div className="flex">
+      <div className="rounded-2xl rounded-bl-sm px-5 py-3 bg-bg-2 border border-[color:var(--border)] flex items-center gap-1.5">
         <span className="h-2 w-2 rounded-full bg-fg-3 animate-bounce" style={{ animationDelay: "0ms" }} />
         <span className="h-2 w-2 rounded-full bg-fg-3 animate-bounce" style={{ animationDelay: "140ms" }} />
         <span className="h-2 w-2 rounded-full bg-fg-3 animate-bounce" style={{ animationDelay: "280ms" }} />
       </div>
-    </div>
-  );
-}
-
-function TexAvatar() {
-  return (
-    <div className="shrink-0 mt-1 h-9 w-9 rounded-xl flex items-center justify-center text-white font-bold text-sm bg-gradient-to-br from-brand via-brand-2 to-[#EC4899] shadow-[0_4px_16px_rgba(139,92,246,0.45)] pulse-glow">
-      T
     </div>
   );
 }
@@ -1276,9 +1267,6 @@ function CoverageScreen({ coverage, isPending }: { coverage: number; isPending: 
         transition={{ type: "spring", stiffness: 240, damping: 22 }}
         className="relative z-10 max-w-md w-full text-center"
       >
-        <div className="mx-auto h-24 w-24 rounded-3xl bg-gradient-to-br from-brand via-brand-2 to-[#EC4899] flex items-center justify-center text-white text-3xl font-bold shadow-[0_20px_60px_rgba(139,92,246,0.5)] mb-6 pulse-glow">
-          T
-        </div>
         <div className="text-sm text-fg-3 mb-2">Calculando cobertura estimada</div>
         <div className="text-7xl font-bold font-mono tabular-nums tracking-tight bg-gradient-to-br from-brand-2 to-[#EC4899] bg-clip-text text-transparent mb-4">
           {coverage}%

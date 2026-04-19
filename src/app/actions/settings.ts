@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createSbServer } from "@/lib/supabase/server";
-import { getCurrentOrgId } from "@/lib/org";
+import { requireAdminOrgId } from "@/lib/org";
 
 export async function saveAiSettings(input: {
   threshold_auto: number;
@@ -12,10 +12,9 @@ export async function saveAiSettings(input: {
   never_promise?: string[];
   must_escalate?: string[];
 }) {
-  const orgId = await getCurrentOrgId();
-  if (!orgId) throw new Error("No org");
+  const orgId = await requireAdminOrgId();
   const sb = await createSbServer();
-  await sb
+  const { error } = await sb
     .from("textos_orgs")
     .update({
       threshold_auto: input.threshold_auto,
@@ -26,15 +25,20 @@ export async function saveAiSettings(input: {
       ...(input.must_escalate ? { must_escalate: input.must_escalate } : {}),
     })
     .eq("id", orgId);
+  if (error) return { ok: false, error: error.message };
   revalidatePath("/ajustes");
   return { ok: true };
 }
 
-export async function updateOrgProfile(input: { name: string; tagline?: string; logo_url?: string | null; timezone?: string }) {
-  const orgId = await getCurrentOrgId();
-  if (!orgId) throw new Error("No org");
+export async function updateOrgProfile(input: {
+  name: string;
+  tagline?: string;
+  logo_url?: string | null;
+  timezone?: string;
+}) {
+  const orgId = await requireAdminOrgId();
   const sb = await createSbServer();
-  await sb
+  const { error } = await sb
     .from("textos_orgs")
     .update({
       name: input.name,
@@ -43,6 +47,7 @@ export async function updateOrgProfile(input: { name: string; tagline?: string; 
       ...(input.timezone ? { timezone: input.timezone } : {}),
     })
     .eq("id", orgId);
+  if (error) return { ok: false, error: error.message };
   revalidatePath("/ajustes");
   revalidatePath("/", "layout");
   return { ok: true };

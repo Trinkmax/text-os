@@ -4,18 +4,28 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
 import { NAV } from "@/lib/nav";
-import { cn, initials, avatarGradient } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Kbd } from "@/components/ui/kbd";
+import { OrgSwitcher } from "@/components/shell/org-switcher";
+
+type Role = "admin" | "agent" | "readonly";
+type Membership = { org_id: string; role: Role; name: string; logo_url: string | null };
 
 export function Sidebar({
-  orgName,
-  orgLogo,
+  orgName: _orgName,
+  orgLogo: _orgLogo,
   compact = false,
+  memberships,
+  currentOrgId,
+  role,
 }: {
   orgName: string;
   orgLogo?: string | null;
   compact?: boolean;
+  memberships: Membership[];
+  currentOrgId: string;
+  role: Role;
 }) {
   const pathname = usePathname();
   return (
@@ -25,24 +35,13 @@ export function Sidebar({
         transition={{ type: "spring", stiffness: 300, damping: 30 }}
         className="sticky top-0 h-screen flex flex-col bg-bg-1 border-r border-[color:var(--border)] shrink-0 overflow-hidden z-20"
       >
-        <div className="flex items-center gap-2.5 h-14 px-3.5 border-b border-[color:var(--border)] shrink-0">
-          <div
-            className="h-8 w-8 rounded-xl flex items-center justify-center text-white text-sm font-bold shrink-0 shadow-[0_4px_16px_rgba(139,92,246,0.35)]"
-            style={{
-              backgroundImage: orgLogo
-                ? `url(${orgLogo})`
-                : avatarGradient(orgName),
-              backgroundSize: "cover",
-            }}
-          >
-            {!orgLogo && (orgName ? initials(orgName) : "T")}
-          </div>
-          {!compact && (
-            <div className="flex flex-col min-w-0 flex-1">
-              <div className="text-sm font-semibold truncate">{orgName || "TextOS"}</div>
-              <div className="text-[10px] uppercase tracking-wider text-fg-4 leading-none mt-0.5">TextOS</div>
-            </div>
-          )}
+        <div className="flex items-center h-14 px-2 border-b border-[color:var(--border)] shrink-0">
+          <OrgSwitcher
+            currentOrgId={currentOrgId}
+            memberships={memberships}
+            role={role}
+            compact={compact}
+          />
         </div>
 
         <nav className="flex-1 overflow-y-auto no-scrollbar py-3 px-2 flex flex-col gap-0.5">

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createSbServer } from "@/lib/supabase/server";
-import { getCurrentOrgId } from "@/lib/org";
+import { requireOrgId } from "@/lib/org";
 
 export type SwipeAction = "send" | "dismiss" | "escalate" | "snooze" | "learn";
 
@@ -12,16 +12,16 @@ export async function resolveSuggestion(params: {
   editedText?: string;
   learnAsCard?: boolean;
 }) {
-  const orgId = await getCurrentOrgId();
-  if (!orgId) throw new Error("No org");
+  const orgId = await requireOrgId();
   const sb = await createSbServer();
 
   const { data: sug } = await sb
     .from("textos_suggestions")
     .select("*, textos_conversations!inner(*)")
     .eq("id", params.suggestionId)
+    .eq("org_id", orgId)
     .single();
-  if (!sug) throw new Error("Sugerencia no encontrada");
+  if (!sug) return { ok: false, error: "Sugerencia no encontrada" };
 
   const finalText = params.editedText?.trim() || sug.proposed_text || "";
 
@@ -41,14 +41,15 @@ export async function resolveSuggestion(params: {
           last_message_at: new Date().toISOString(),
           unread_count: 0,
         })
-        .eq("id", sug.conversation_id);
+        .eq("id", sug.conversation_id)
+        .eq("org_id", orgId);
     }
     if (params.action === "learn" && params.learnAsCard) {
-      // Use the inbound message as the question, the sent text as the answer
       const { data: lastIn } = await sb
         .from("textos_messages")
         .select("body")
         .eq("conversation_id", sug.conversation_id)
+        .eq("org_id", orgId)
         .eq("direction", "in")
         .order("created_at", { ascending: false })
         .limit(1)
@@ -71,18 +72,25 @@ export async function resolveSuggestion(params: {
         status: params.action === "learn" ? "scope_gap_learned" : "sent",
         resolved_at: new Date().toISOString(),
       })
-      .eq("id", params.suggestionId);
+      .eq("id", params.suggestionId)
+      .eq("org_id", orgId);
   } else if (params.action === "dismiss") {
     await sb
       .from("textos_suggestions")
       .update({ status: "dismissed", resolved_at: new Date().toISOString() })
-      .eq("id", params.suggestionId);
+      .eq("id", params.suggestionId)
+      .eq("org_id", orgId);
   } else if (params.action === "escalate") {
     await sb
       .from("textos_suggestions")
       .update({ status: "escalated", resolved_at: new Date().toISOString() })
-      .eq("id", params.suggestionId);
-    await sb.from("textos_conversations").update({ semaphore: "red" }).eq("id", sug.conversation_id);
+      .eq("id", params.suggestionId)
+      .eq("org_id", orgId);
+    await sb
+      .from("textos_conversations")
+      .update({ semaphore: "red" })
+      .eq("id", sug.conversation_id)
+      .eq("org_id", orgId);
   } else if (params.action === "snooze") {
     await sb
       .from("textos_suggestions")
@@ -90,7 +98,8 @@ export async function resolveSuggestion(params: {
         status: "snoozed",
         snooze_until: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
       })
-      .eq("id", params.suggestionId);
+      .eq("id", params.suggestionId)
+      .eq("org_id", orgId);
   }
 
   revalidatePath("/swipe");
@@ -100,18 +109,19 @@ export async function resolveSuggestion(params: {
 }
 
 export async function undoResolution(suggestionId: string) {
+  const orgId = await requireOrgId();
   const sb = await createSbServer();
   await sb
     .from("textos_suggestions")
     .update({ status: "pending", resolved_at: null, snooze_until: null })
-    .eq("id", suggestionId);
+    .eq("id", suggestionId)
+    .eq("org_id", orgId);
   revalidatePath("/swipe");
   return { ok: true };
 }
 
 export async function flagAutosend(suggestionId: string, note?: string) {
-  const orgId = await getCurrentOrgId();
-  if (!orgId) throw new Error("No org");
+  const orgId = await requireOrgId();
   const sb = await createSbServer();
   await sb.from("textos_autosend_feedback").insert({
     org_id: orgId,

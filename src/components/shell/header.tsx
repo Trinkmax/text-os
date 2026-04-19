@@ -6,18 +6,20 @@ import { useEffect, useState } from "react";
 import { useCommand } from "@/components/shell/command-context";
 import { SemaphoreCounter } from "@/components/shell/semaphore-badge";
 import { Kbd } from "@/components/ui/kbd";
-import { GradientAvatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { UserMenu } from "@/components/shell/user-menu";
 
 export function AppHeader({
   orgId,
-  orgName,
+  orgName: _orgName,
   userName,
+  userEmail,
   initialCounts,
 }: {
   orgId: string;
   orgName: string;
   userName: string;
+  userEmail: string;
   initialCounts: { green: number; amber: number; red: number };
 }) {
   const { open } = useCommand();
@@ -51,7 +53,7 @@ export function AppHeader({
           {resolvedTheme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
       )}
-      <GradientAvatar name={userName} className="h-8 w-8" />
+      <UserMenu userName={userName} userEmail={userEmail} />
     </header>
   );
 }

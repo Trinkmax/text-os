@@ -5,9 +5,11 @@ export type Json = string | number | boolean | null | { [k: string]: Json | unde
 
 export type Semaphore = "green" | "amber" | "red";
 
-export type Database = {
-  public: {
-    Tables: {
+// Supabase-js v2.103 expects each Tables entry to expose `Relationships`.
+// Rather than repeat `Relationships: []` on every table we map them once.
+type WithRelationships<T> = { [K in keyof T]: T[K] & { Relationships: [] } };
+
+type _Tables = {
       textos_orgs: {
         Row: {
           id: string;
@@ -258,10 +260,34 @@ export type Database = {
         Insert: { id?: string; org_id: string; contact_id: string; body: string; author_id?: string | null };
         Update: Partial<{ body: string }>;
       };
-    };
+      textos_org_invites: {
+        Row: {
+          id: string;
+          org_id: string;
+          email: string;
+          role: "admin" | "agent" | "readonly";
+          token: string;
+          invited_by: string | null;
+          accepted_at: string | null;
+          created_at: string;
+        };
+        Insert: {
+          org_id: string;
+          email: string;
+          role?: "admin" | "agent" | "readonly";
+          invited_by?: string | null;
+        };
+        Update: Partial<{ role: "admin" | "agent" | "readonly"; accepted_at: string | null }>;
+      };
+};
+
+export type Database = {
+  public: {
+    Tables: WithRelationships<_Tables>;
     Views: Record<string, never>;
     Functions: Record<string, never>;
     Enums: Record<string, never>;
+    CompositeTypes: Record<string, never>;
   };
 };
 

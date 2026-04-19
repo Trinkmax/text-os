@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createSbServer } from "@/lib/supabase/server";
-import { getCurrentOrgId } from "@/lib/org";
+import { requireOrgId } from "@/lib/org";
 
 export async function saveKnowledgeCard(input: {
   id?: string;
@@ -12,11 +12,11 @@ export async function saveKnowledgeCard(input: {
   variants?: string[];
   confidence?: number;
 }) {
-  const orgId = await getCurrentOrgId();
-  if (!orgId) throw new Error("No org");
+  const orgId = await requireOrgId();
   const sb = await createSbServer();
+
   if (input.id) {
-    await sb
+    const { error } = await sb
       .from("textos_knowledge_cards")
       .update({
         topic: input.topic,
@@ -25,9 +25,11 @@ export async function saveKnowledgeCard(input: {
         variants: input.variants || [],
         confidence: input.confidence ?? undefined,
       })
-      .eq("id", input.id);
+      .eq("id", input.id)
+      .eq("org_id", orgId);
+    if (error) return { ok: false, error: error.message };
   } else {
-    await sb.from("textos_knowledge_cards").insert({
+    const { error } = await sb.from("textos_knowledge_cards").insert({
       org_id: orgId,
       topic: input.topic,
       question: input.question,
@@ -36,25 +38,37 @@ export async function saveKnowledgeCard(input: {
       confidence: input.confidence ?? 0.7,
       origin: "manual",
     });
+    if (error) return { ok: false, error: error.message };
   }
   revalidatePath("/conocimiento");
   return { ok: true };
 }
 
 export async function deleteKnowledgeCard(id: string) {
+  const orgId = await requireOrgId();
   const sb = await createSbServer();
-  await sb.from("textos_knowledge_cards").delete().eq("id", id);
+  const { error } = await sb
+    .from("textos_knowledge_cards")
+    .delete()
+    .eq("id", id)
+    .eq("org_id", orgId);
+  if (error) return { ok: false, error: error.message };
   revalidatePath("/conocimiento");
   return { ok: true };
 }
 
 export async function convertScopeGap(gapId: string, answer: string) {
-  const orgId = await getCurrentOrgId();
-  if (!orgId) throw new Error("No org");
+  const orgId = await requireOrgId();
   const sb = await createSbServer();
-  const { data: gap } = await sb.from("textos_scope_gaps").select("*").eq("id", gapId).single();
-  if (!gap) throw new Error("Gap not found");
-  const { data: card } = await sb
+  const { data: gap } = await sb
+    .from("textos_scope_gaps")
+    .select("*")
+    .eq("id", gapId)
+    .eq("org_id", orgId)
+    .single();
+  if (!gap) return { ok: false, error: "Gap no encontrado" };
+
+  const { data: card, error: cardError } = await sb
     .from("textos_knowledge_cards")
     .insert({
       org_id: orgId,
@@ -66,8 +80,14 @@ export async function convertScopeGap(gapId: string, answer: string) {
     })
     .select("id")
     .single();
+  if (cardError) return { ok: false, error: cardError.message };
+
   if (card) {
-    await sb.from("textos_scope_gaps").update({ resolved_card_id: card.id }).eq("id", gapId);
+    await sb
+      .from("textos_scope_gaps")
+      .update({ resolved_card_id: card.id })
+      .eq("id", gapId)
+      .eq("org_id", orgId);
   }
   revalidatePath("/conocimiento");
   return { ok: true };

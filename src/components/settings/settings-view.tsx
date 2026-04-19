@@ -24,7 +24,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
 import { saveAiSettings, updateOrgProfile } from "@/app/actions/settings";
-import { resetDemo } from "@/app/actions/orgs";
+import { resetDemoSession } from "@/app/actions/orgs";
+import { TeamSection as RealTeamSection } from "@/components/settings/team-section";
 
 type Org = {
   id: string;
@@ -52,8 +53,33 @@ const SECTIONS = [
   { id: "billing", label: "Facturación", icon: CreditCard },
 ];
 
-export function SettingsView({ org, channels }: { org: Org; channels: Channel[] }) {
-  const [sec, setSec] = useState("ai");
+type Role = "admin" | "agent" | "readonly";
+type Member = { user_id: string; role: Role; created_at: string };
+type Invite = {
+  id: string;
+  email: string;
+  role: Role;
+  token: string;
+  accepted_at: string | null;
+  created_at: string;
+};
+
+export function SettingsView({
+  org,
+  channels,
+  team,
+  role,
+  currentUserId,
+  initialSection,
+}: {
+  org: Org;
+  channels: Channel[];
+  team: { members: Member[]; invites: Invite[] };
+  role: Role;
+  currentUserId: string;
+  initialSection?: string;
+}) {
+  const [sec, setSec] = useState(initialSection ?? "ai");
   return (
     <div className="flex h-[calc(100vh-56px)]">
       <aside className="w-56 border-r border-[color:var(--border)] bg-bg-1 p-2">
@@ -77,7 +103,15 @@ export function SettingsView({ org, channels }: { org: Org; channels: Channel[] 
         {sec === "ai" && <AISettings org={org} />}
         {sec === "profile" && <ProfileSection org={org} />}
         {sec === "org" && <OrgSection org={org} />}
-        {sec === "team" && <TeamSection />}
+        {sec === "team" && (
+          <RealTeamSection
+            members={team.members}
+            invites={team.invites}
+            currentUserId={currentUserId}
+            role={role}
+            orgName={org.name}
+          />
+        )}
         {sec === "channels" && <ChannelsSection channels={channels} />}
         {sec === "appearance" && <AppearanceSection />}
         {sec === "billing" && <BillingSection />}
@@ -244,7 +278,7 @@ function OrgSection({ org }: { org: Org }) {
           <Input value={org.timezone} readOnly />
         </div>
         <div className="flex justify-between">
-          <form action={async () => { await resetDemo(); }}>
+          <form action={async () => { await resetDemoSession(); }}>
             <Button variant="ghost" size="sm" type="submit">Rehacer onboarding</Button>
           </form>
           <Button
