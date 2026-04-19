@@ -1,5 +1,6 @@
 "use client";
 
+import { useTransition } from "react";
 import { LogOut, User as UserIcon } from "lucide-react";
 import {
   DropdownMenu,
@@ -13,10 +14,15 @@ import { GradientAvatar } from "@/components/ui/avatar";
 import { signOutAction } from "@/app/actions/auth";
 
 export function UserMenu({ userName, userEmail }: { userName: string; userEmail: string }) {
+  const [pending, start] = useTransition();
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button aria-label="Menú de usuario" className="rounded-full focus:outline-none focus:ring-2 focus:ring-brand">
+        <button
+          aria-label="Menú de usuario"
+          className="rounded-full focus:outline-none focus:ring-2 focus:ring-brand"
+        >
           <GradientAvatar name={userName} className="h-8 w-8" />
         </button>
       </DropdownMenuTrigger>
@@ -29,13 +35,18 @@ export function UserMenu({ userName, userEmail }: { userName: string; userEmail:
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <form action={signOutAction}>
-          <DropdownMenuItem asChild>
-            <button type="submit" className="w-full flex items-center gap-2 text-left">
-              <LogOut className="h-4 w-4" /> Cerrar sesión
-            </button>
-          </DropdownMenuItem>
-        </form>
+        <DropdownMenuItem
+          disabled={pending}
+          onSelect={(e) => {
+            e.preventDefault();
+            start(async () => {
+              await signOutAction();
+            });
+          }}
+        >
+          <LogOut className="h-4 w-4" />
+          {pending ? "Cerrando…" : "Cerrar sesión"}
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
