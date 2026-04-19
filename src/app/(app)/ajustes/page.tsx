@@ -19,7 +19,13 @@ export default async function AjustesPage({
     data: { user },
   } = await sb.auth.getUser();
   const { data: org } = await sb.from("textos_orgs").select("*").eq("id", active.org.id).single();
-  const { data: channels } = await sb.from("textos_channels").select("*").eq("org_id", active.org.id);
+  const { data: channels } = await sb
+    .from("textos_channels")
+    .select(
+      "id, type, status, label, external_id, config, verified_at, last_error, created_at, updated_at"
+    )
+    .eq("org_id", active.org.id)
+    .order("created_at", { ascending: true });
   const team = await listTeamData();
   const params = (await searchParams) ?? {};
 

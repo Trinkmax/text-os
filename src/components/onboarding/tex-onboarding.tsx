@@ -1,20 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { motion, AnimatePresence, type HTMLMotionProps } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { useRouter } from "next/navigation";
 import {
   Check,
   ChevronRight,
   ChevronLeft,
-  Loader2,
   Send,
   Sparkles,
   X,
   Upload,
   ArrowRight,
   PartyPopper,
-  type LucideIcon,
 } from "lucide-react";
 import { InstagramIcon, MessengerIcon, WhatsAppIcon, GlobeIcon } from "@/components/ui/brand-icons";
 import { Button } from "@/components/ui/button";
@@ -26,6 +24,7 @@ import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import { completeOnboarding, seedDemo } from "@/app/actions/orgs";
 import { toast } from "sonner";
+import { TexMascot, TexTalking, TEX_COPY, useTexFrames, useTypewriter } from "@/components/tex";
 
 const INDUSTRIES = [
   { id: "servicios", label: "Servicios", emoji: "🧰" },
@@ -116,7 +115,7 @@ export function TexOnboarding() {
   const [step, setStep] = useState(0);
   const [history, setHistory] = useState<Turn[]>([]);
   const [typing, setTyping] = useState(false);
-  const [finalStage, setFinalStage] = useState<"idle" | "cards" | "coverage" | "enter">("idle");
+  const [finalStage, setFinalStage] = useState<"intro" | "idle" | "cards" | "coverage" | "enter">("intro");
   const [coverage, setCoverage] = useState(0);
   const [isPending, start] = useTransition();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -129,22 +128,25 @@ export function TexOnboarding() {
 
   const current = steps[step];
 
-  // Push Tex's question for current step (only when step changes / on mount).
+  // Start Tex's question for current step — "thinking" → typewriter.
+  // The typewriter component calls `onTypeDone` when finished, which pushes
+  // the message to history and clears freshTexMsg.
   useEffect(() => {
     if (!current) return;
     setTyping(true);
-    const t1 = setTimeout(() => setFreshTexMsg(current.tex(data)), 520);
-    const t2 = setTimeout(() => {
+    setFreshTexMsg(null);
+    const t1 = setTimeout(() => {
       setTyping(false);
-      setHistory((h) => [...h, { from: "tex", text: current.tex(data), id: `tex-${step}` }]);
-      setFreshTexMsg(null);
-    }, 1080);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
+      setFreshTexMsg(current.tex(data));
+    }, 440);
+    return () => clearTimeout(t1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
+
+  function onFreshTypeDone(text: string) {
+    setHistory((h) => [...h, { from: "tex", text, id: `tex-${step}` }]);
+    setFreshTexMsg(null);
+  }
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -195,40 +197,52 @@ export function TexOnboarding() {
         toast.error("No pudimos guardar. Probá de nuevo.");
         return;
       }
-      // After short delay, enter
-      setTimeout(() => setFinalStage("enter"), 2200);
+      // Give the counter time to reach target (~2.5-4s) before handing off.
+      setTimeout(() => setFinalStage("enter"), 4200);
     });
   }
 
-  // Coverage animation based on data
+  // Coverage animation — snapshot target once when stage enters "coverage".
+  // Depend only on `finalStage` so setCoverage re-renders don't restart the loop.
   useEffect(() => {
     if (finalStage !== "coverage") return;
-    const target = Math.min(
-      92,
-      topQs.length * 10 +
-        Object.values(data.answers).filter((a) => a.length > 10).length * 6 +
-        data.neverPromise.length * 3 +
-        data.mustEscalate.length * 3 +
-        (data.sampleMessages.filter((m) => m.trim().length > 5).length >= 3 ? 8 : 0) +
-        (data.channels.length ? 4 : 0)
+    const answered = Object.values(data.answers).filter((a) => a.trim().length > 4).length;
+    const target = Math.max(
+      42,
+      Math.min(
+        92,
+        topQs.length * 8 +
+          answered * 6 +
+          data.neverPromise.length * 3 +
+          data.mustEscalate.length * 3 +
+          (data.sampleMessages.filter((m) => m.trim().length > 5).length >= 2 ? 10 : 0) +
+          (data.channels.length ? 6 : 0) +
+          20 // baseline "la IA ya entiende lo básico"
+      )
     );
     let n = 0;
+    setCoverage(0);
     const iv = setInterval(() => {
-      n += Math.random() * 4 + 1;
+      n += Math.random() * 3 + 1.2;
       if (n >= target) {
         n = target;
         clearInterval(iv);
       }
       setCoverage(Math.round(n));
-    }, 38);
+    }, 42);
     return () => clearInterval(iv);
-  }, [finalStage, data, topQs]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finalStage]);
 
   async function quickDemo() {
     start(async () => {
       const res = await seedDemo("barberia");
       if (res.ok) router.push("/inicio");
     });
+  }
+
+  if (finalStage === "intro") {
+    return <IntroScreen onDone={() => setFinalStage("idle")} onSkip={quickDemo} isPending={isPending} />;
   }
 
   if (finalStage === "enter") {
@@ -290,6 +304,13 @@ export function TexOnboarding() {
                 ))}
               </AnimatePresence>
               {typing && <TypingBubble />}
+              {!typing && freshTexMsg !== null && (
+                <TexTypewriterBubble
+                  key={`fresh-${step}`}
+                  text={freshTexMsg}
+                  onDone={() => onFreshTypeDone(freshTexMsg)}
+                />
+              )}
               {!typing && freshTexMsg === null && (
                 <motion.div
                   key={`input-${step}`}
@@ -314,6 +335,33 @@ export function TexOnboarding() {
   );
 }
 
+function TexChatAvatar({ talking }: { talking: boolean }) {
+  const frame = useTexFrames(talking);
+  const src =
+    frame === 2
+      ? "/mascot/tex-talk-2.png"
+      : frame === 3
+        ? "/mascot/tex-talk-3.png"
+        : "/mascot/tex-talk-1.png";
+  return (
+    <div
+      className="relative shrink-0 mb-1"
+      style={{ width: 40, height: 40 }}
+      aria-hidden
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt=""
+        width={40}
+        height={40}
+        className="pixelated select-none"
+        draggable={false}
+      />
+    </div>
+  );
+}
+
 function MessageBubble({ from, text }: { from: "tex" | "user"; text: string }) {
   if (from === "tex") {
     return (
@@ -321,10 +369,11 @@ function MessageBubble({ from, text }: { from: "tex" | "user"; text: string }) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 280, damping: 24 }}
-        className="flex"
+        className="flex items-end gap-2"
       >
-        {/* La colita apunta abajo-izquierda, hacia la mascota */}
-        <div className="max-w-[88%] rounded-2xl rounded-bl-sm px-5 py-3 bg-bg-2 border border-[color:var(--border)] text-fg leading-relaxed">
+        {/* Idle (blinks only) — message is already settled */}
+        <TexChatAvatar talking={false} />
+        <div className="max-w-[82%] rounded-2xl rounded-bl-sm px-5 py-3 bg-bg-2 border border-[color:var(--border)] text-fg leading-relaxed">
           {text}
         </div>
       </motion.div>
@@ -345,14 +394,48 @@ function MessageBubble({ from, text }: { from: "tex" | "user"; text: string }) {
 }
 
 function TypingBubble() {
+  // Short "thinking" beat before Tex starts speaking.
   return (
-    <div className="flex">
-      <div className="rounded-2xl rounded-bl-sm px-5 py-3 bg-bg-2 border border-[color:var(--border)] flex items-center gap-1.5">
-        <span className="h-2 w-2 rounded-full bg-fg-3 animate-bounce" style={{ animationDelay: "0ms" }} />
-        <span className="h-2 w-2 rounded-full bg-fg-3 animate-bounce" style={{ animationDelay: "140ms" }} />
-        <span className="h-2 w-2 rounded-full bg-fg-3 animate-bounce" style={{ animationDelay: "280ms" }} />
+    <div className="flex items-end gap-2">
+      <TexChatAvatar talking={false} />
+      <div className="rounded-2xl rounded-bl-sm px-4 py-3 bg-bg-2 border border-[color:var(--border)] flex items-center gap-1.5">
+        <span className="h-1.5 w-1.5 rounded-full bg-fg-3 animate-bounce" style={{ animationDelay: "0ms" }} />
+        <span className="h-1.5 w-1.5 rounded-full bg-fg-3 animate-bounce" style={{ animationDelay: "140ms" }} />
+        <span className="h-1.5 w-1.5 rounded-full bg-fg-3 animate-bounce" style={{ animationDelay: "280ms" }} />
       </div>
     </div>
+  );
+}
+
+function TexTypewriterBubble({ text, onDone }: { text: string; onDone: () => void }) {
+  const { text: shown, isTyping } = useTypewriter({
+    text,
+    charIntervalMs: 22,
+    startDelayMs: 160,
+    onDone,
+  });
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ type: "spring", stiffness: 280, damping: 24 }}
+      className="flex items-end gap-2"
+    >
+      <TexChatAvatar talking={isTyping} />
+      <div
+        className="max-w-[82%] rounded-2xl rounded-bl-sm px-5 py-3 bg-bg-2 border border-[color:var(--border)] text-fg leading-relaxed"
+        aria-live="polite"
+        aria-label={text}
+      >
+        <span className="whitespace-pre-wrap">{shown || "\u00a0"}</span>
+        {isTyping && (
+          <span
+            className="inline-block w-[2px] h-[1em] align-[-2px] ml-0.5 bg-brand-2 animate-pulse"
+            aria-hidden
+          />
+        )}
+      </div>
+    </motion.div>
   );
 }
 
@@ -1258,6 +1341,7 @@ function CardsReviewScreen({
 }
 
 function CoverageScreen({ coverage, isPending }: { coverage: number; isPending: boolean }) {
+  const done = !isPending && coverage > 0;
   return (
     <div className="min-h-screen flex flex-col items-center justify-center gradient-mesh relative px-6">
       <div className="absolute inset-0 grid-bg opacity-30 pointer-events-none" />
@@ -1267,7 +1351,17 @@ function CoverageScreen({ coverage, isPending }: { coverage: number; isPending: 
         transition={{ type: "spring", stiffness: 240, damping: 22 }}
         className="relative z-10 max-w-md w-full text-center"
       >
-        <div className="text-sm text-fg-3 mb-2">Calculando cobertura estimada</div>
+        <div className="mb-6 flex justify-center">
+          <TexMascot
+            key={done ? "goals" : "analytics"}
+            variant={done ? "goals" : "analytics"}
+            size="lg"
+            popIn
+          />
+        </div>
+        <div className="text-sm text-fg-3 mb-2">
+          {done ? "Tu IA ya está lista" : "Calculando cobertura estimada"}
+        </div>
         <div className="text-7xl font-bold font-mono tabular-nums tracking-tight bg-gradient-to-br from-brand-2 to-[#EC4899] bg-clip-text text-transparent mb-4">
           {coverage}%
         </div>
@@ -1281,7 +1375,7 @@ function CoverageScreen({ coverage, isPending }: { coverage: number; isPending: 
         </div>
         <div className="mt-6 text-fg-3 text-sm">
           {isPending
-            ? "Guardando tarjetas y preparando la bandeja…"
+            ? TEX_COPY.onboarding.coverage
             : "Tu IA ya puede manejar este % de consultas sola."}
         </div>
       </motion.div>
@@ -1299,7 +1393,7 @@ function EnterScreen({
   onEnter: () => void;
 }) {
   useEffect(() => {
-    const t = setTimeout(onEnter, 2600);
+    const t = setTimeout(onEnter, 3400);
     return () => clearTimeout(t);
   }, [onEnter]);
   return (
@@ -1311,6 +1405,9 @@ function EnterScreen({
         transition={{ type: "spring", stiffness: 240, damping: 20 }}
         className="relative z-10 max-w-lg"
       >
+        <div className="mb-6 flex justify-center">
+          <TexMascot variant="goals" size="xl" popIn idle priority />
+        </div>
         <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--border)] bg-bg-1 px-3 py-1.5 text-xs text-fg-2 mb-5">
           <PartyPopper className="h-3.5 w-3.5 text-brand-2" />
           Listo, {orgName}
@@ -1326,6 +1423,54 @@ function EnterScreen({
           Entrar a TextOS <ArrowRight className="h-5 w-5" />
         </Button>
       </motion.div>
+    </div>
+  );
+}
+
+function IntroScreen({
+  onDone,
+  onSkip,
+  isPending,
+}: {
+  onDone: () => void;
+  onSkip: () => void;
+  isPending: boolean;
+}) {
+  const [ready, setReady] = useState(false);
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center gradient-mesh relative px-6">
+      <div className="absolute inset-0 grid-bg opacity-30 pointer-events-none" />
+      <button
+        type="button"
+        onClick={onSkip}
+        disabled={isPending}
+        className="absolute top-5 right-6 text-xs text-fg-3 hover:text-fg transition z-20"
+      >
+        Saltear y ver con datos de ejemplo →
+      </button>
+      <div className="relative z-10 flex flex-col items-center gap-8 w-full max-w-xl">
+        <TexTalking
+          messages={[
+            TEX_COPY.onboarding.hi,
+            TEX_COPY.onboarding.mission,
+            TEX_COPY.onboarding.reassure,
+            TEX_COPY.onboarding.lets_go,
+          ]}
+          onComplete={() => setReady(true)}
+          size="xl"
+          pauseBetweenMs={1200}
+        />
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: ready ? 1 : 0, y: ready ? 0 : 8 }}
+          transition={{ duration: 0.3 }}
+          className="pt-4"
+        >
+          <Button size="xl" onClick={onDone} disabled={!ready} className="gap-2">
+            Empezar <ArrowRight className="h-5 w-5" />
+          </Button>
+        </motion.div>
+      </div>
     </div>
   );
 }

@@ -2,21 +2,38 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Megaphone, Plus, Send, Users, Clock, Eye, MessageCircle, ArrowRight, Calendar } from "lucide-react";
+import { Megaphone, Plus, Send, Users, ArrowRight, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Chip } from "@/components/ui/chip";
-import { cn } from "@/lib/utils";
+import { cn, formatRelative } from "@/lib/utils";
+import { TexSays, TexEmpty, TEX_COPY } from "@/components/tex";
 
-const MOCK = [
-  { id: "1", name: "Recordatorio turnos mañana", status: "scheduled", delivered: 0, read: 0, replied: 0, total: 124, scheduledAt: "Mañana 9:00" },
-  { id: "2", name: "Promo fin de semana", status: "completed", delivered: 412, read: 380, replied: 67, total: 412 },
-  { id: "3", name: "Clientes inactivos 30 días", status: "draft", delivered: 0, read: 0, replied: 0, total: 208 },
-];
+type CampaignStatus = "draft" | "scheduled" | "sending" | "completed" | "paused";
 
-export function CampaignsView() {
+type CampaignStats = {
+  delivered?: number;
+  read?: number;
+  replied?: number;
+  total?: number;
+};
+
+type Campaign = {
+  id: string;
+  name: string;
+  status: CampaignStatus;
+  scheduled_at: string | null;
+  stats: CampaignStats | null;
+};
+
+interface CampaignsViewProps {
+  campaigns: Campaign[];
+  contactsCount: number;
+}
+
+export function CampaignsView({ campaigns, contactsCount }: CampaignsViewProps) {
   const [composing, setComposing] = useState(false);
   return (
     <div className="px-6 lg:px-10 py-8 max-w-6xl mx-auto w-full">
@@ -31,35 +48,68 @@ export function CampaignsView() {
         </Button>
       </header>
 
-      <div className="flex flex-col gap-2">
-        {MOCK.map((c) => (
-          <div key={c.id} className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-4 flex items-center gap-4">
-            <div className="h-10 w-10 rounded-xl bg-bg-2 border border-[color:var(--border)] flex items-center justify-center">
-              <Megaphone className="h-4 w-4 text-fg-2" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold truncate">{c.name}</div>
-              <div className="text-xs text-fg-3 flex items-center gap-3 mt-0.5">
-                <StatusBadge status={c.status} />
-                <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {c.total}</span>
-                {c.scheduledAt && <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {c.scheduledAt}</span>}
-              </div>
-            </div>
-            {c.status === "completed" && (
-              <div className="flex items-center gap-4 text-xs">
-                <Metric label="Entregados" value={c.delivered} />
-                <Metric label="Leídos" value={c.read} />
-                <Metric label="Respondieron" value={c.replied} />
-              </div>
-            )}
-            <Button variant="ghost" size="sm" className="gap-1">
-              Abrir <ArrowRight className="h-3 w-3" />
-            </Button>
-          </div>
-        ))}
+      <div className="mb-5">
+        <TexSays
+          variant="analytics"
+          size="sm"
+          tone="info"
+          message={<span className="text-[13px]">Las campañas funcionan mejor cuando segmentás. Te ayudo con los filtros cuando armes una nueva.</span>}
+          maxBubbleWidth={480}
+        />
       </div>
 
-      {composing && <Composer onClose={() => setComposing(false)} />}
+      {campaigns.length === 0 ? (
+        <TexEmpty
+          variant="support"
+          size="xl"
+          message={<span>{TEX_COPY.empty.noCampaigns}</span>}
+          action={
+            <Button onClick={() => setComposing(true)} className="gap-2">
+              <Plus className="h-4 w-4" /> Crear primera campaña
+            </Button>
+          }
+        />
+      ) : (
+        <div className="flex flex-col gap-2">
+          {campaigns.map((c) => {
+            const stats = c.stats || {};
+            const total = stats.total ?? 0;
+            return (
+              <div key={c.id} className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-4 flex items-center gap-4">
+                <div className="h-10 w-10 rounded-xl bg-bg-2 border border-[color:var(--border)] flex items-center justify-center">
+                  <Megaphone className="h-4 w-4 text-fg-2" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="font-semibold truncate">{c.name}</div>
+                  <div className="text-xs text-fg-3 flex items-center gap-3 mt-0.5">
+                    <StatusBadge status={c.status} />
+                    <span className="flex items-center gap-1">
+                      <Users className="h-3 w-3" /> {total}
+                    </span>
+                    {c.scheduled_at && (
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" /> {formatRelative(c.scheduled_at)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {c.status === "completed" && (
+                  <div className="flex items-center gap-4 text-xs">
+                    <Metric label="Entregados" value={stats.delivered ?? 0} />
+                    <Metric label="Leídos" value={stats.read ?? 0} />
+                    <Metric label="Respondieron" value={stats.replied ?? 0} />
+                  </div>
+                )}
+                <Button variant="ghost" size="sm" className="gap-1">
+                  Abrir <ArrowRight className="h-3 w-3" />
+                </Button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {composing && <Composer onClose={() => setComposing(false)} contactsCount={contactsCount} />}
     </div>
   );
 }
@@ -73,20 +123,21 @@ function Metric({ label, value }: { label: string; value: number }) {
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, { label: string; variant: "default" | "amber" | "green" | "brand" }> = {
+function StatusBadge({ status }: { status: CampaignStatus }) {
+  const map: Record<CampaignStatus, { label: string; variant: "default" | "amber" | "green" | "brand" }> = {
     draft: { label: "Borrador", variant: "default" },
     scheduled: { label: "Programada", variant: "amber" },
     sending: { label: "Enviando", variant: "brand" },
     completed: { label: "Completada", variant: "green" },
+    paused: { label: "Pausada", variant: "default" },
   };
   const m = map[status] || map.draft;
   return <Badge variant={m.variant}>{m.label}</Badge>;
 }
 
-function Composer({ onClose }: { onClose: () => void }) {
+function Composer({ onClose, contactsCount }: { onClose: () => void; contactsCount: number }) {
   const [step, setStep] = useState<"audience" | "message" | "schedule">("audience");
-  const [audience, setAudience] = useState<string[]>(["Clientes activos"]);
+  const [audience, setAudience] = useState<string[]>([]);
   const [message, setMessage] = useState("");
   const [schedule, setSchedule] = useState<"now" | "later">("now");
 
@@ -138,7 +189,8 @@ function Composer({ onClose }: { onClose: () => void }) {
                 <div className="mt-auto rounded-xl border border-[color:var(--border)] bg-bg-2 p-3 flex items-center gap-3 text-sm">
                   <Users className="h-4 w-4 text-brand-2" />
                   <div>
-                    <b>214</b> contactos coinciden
+                    <b>{contactsCount}</b> contactos totales
+                    {audience.length > 0 && <span className="text-fg-3"> · elegí filtros para afinar</span>}
                   </div>
                 </div>
               </>

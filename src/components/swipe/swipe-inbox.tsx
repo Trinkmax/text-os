@@ -33,6 +33,7 @@ import { resolveSuggestion, undoResolution, flagAutosend } from "@/app/actions/s
 import { useFocus } from "@/components/shell/focus-context";
 import { createClient } from "@/lib/supabase/client";
 import { Switch } from "@/components/ui/switch";
+import { TexMascot, TexSpeechBubble, TEX_COPY } from "@/components/tex";
 
 type Autosent = {
   id: string;
@@ -401,14 +402,17 @@ function EmptyDeck({ stats }: { stats: Stats }) {
   return (
     <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
       <motion.div
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ type: "spring", stiffness: 240, damping: 20 }}
-        className="h-28 w-28 rounded-3xl bg-gradient-to-br from-[#10B981] via-[#06B6D4] to-brand flex items-center justify-center text-white mb-6 shadow-[0_20px_60px_rgba(16,185,129,0.4)] pulse-glow"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 220, damping: 20, delay: 0.1 }}
+        className="mb-5"
       >
-        <CheckCircle2 className="h-12 w-12" />
+        <TexSpeechBubble tail="bottom-left" tone="celebrate" maxWidth={340}>
+          <span className="text-[14px] font-medium">{TEX_COPY.empty.swipeZero}</span>
+        </TexSpeechBubble>
       </motion.div>
-      <h2 className="text-3xl font-bold tracking-tight mb-2">Todo bajo control.</h2>
+      <TexMascot variant="goals" size="xl" popIn idle priority />
+      <h2 className="text-3xl font-bold tracking-tight mt-6 mb-2">Todo bajo control.</h2>
       <p className="text-fg-3 text-lg max-w-md">
         La IA está respondiendo sola 🟢 y no hay nada que decidas por ahora.
       </p>
@@ -442,10 +446,8 @@ function AutosendsFeed({
   if (!items.length) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center px-6">
-        <div className="h-20 w-20 rounded-2xl bg-bg-1 border border-[color:var(--border)] flex items-center justify-center text-fg-3 mb-4">
-          <Eye className="h-8 w-8" />
-        </div>
-        <h2 className="text-xl font-semibold">Sin autosends hoy</h2>
+        <TexMascot variant="default" size="lg" popIn idle />
+        <h2 className="text-xl font-semibold mt-5">Sin autosends hoy</h2>
         <p className="text-fg-3 text-sm mt-1 max-w-md">Cuando la IA responda sola, vas a poder revisarlo acá.</p>
       </div>
     );

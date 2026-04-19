@@ -7,11 +7,11 @@ import {
   Layers,
   MessagesSquare,
   BrainCircuit,
-  Megaphone,
   TrendingUp,
   ArrowUpRight,
 } from "lucide-react";
 import { formatRelative } from "@/lib/utils";
+import { TexMascot, TexSpeechBubble, TEX_COPY } from "@/components/tex";
 
 export const dynamic = "force-dynamic";
 
@@ -38,11 +38,29 @@ export default async function InicioPage() {
 
   return (
     <div className="px-6 lg:px-10 py-8 max-w-6xl mx-auto w-full">
-      <div className="mb-8">
-        <div className="text-fg-3 text-sm mb-1">Buenos días, {name}</div>
-        <h1 className="text-3xl font-bold tracking-tight">
-          Tu IA manejó <span className="text-[color:var(--accent-green)]">{greenPct}%</span> sola hoy.
-        </h1>
+      <div className="mb-8 flex items-start gap-5">
+        <div className="flex-1 min-w-0">
+          <div className="text-fg-3 text-sm mb-1">Buenos días, {name}</div>
+          <h1 className="text-3xl font-bold tracking-tight">
+            Tu IA manejó <span className="text-[color:var(--accent-green)]">{greenPct}%</span> sola hoy.
+          </h1>
+        </div>
+        <div className="hidden md:flex items-end gap-2 shrink-0">
+          <TexSpeechBubble
+            tail="bottom-right"
+            tone={greenPct >= 80 ? "celebrate" : "neutral"}
+            maxWidth={240}
+            className="text-[13px] mb-1"
+          >
+            {TEX_COPY.dashboard.mornings(greenPct, name)}
+          </TexSpeechBubble>
+          <TexMascot
+            variant={greenPct >= 80 ? "goals" : "support"}
+            size="md"
+            popIn
+            idle
+          />
+        </div>
       </div>
 
       {/* Semáforo cards */}
@@ -108,7 +126,12 @@ export default async function InicioPage() {
               </li>
             ))}
             {!lastMsgs.data?.length && (
-              <div className="py-8 text-center text-sm text-fg-3">Sin actividad todavía.</div>
+              <div className="py-6 flex flex-col items-center gap-3">
+                <TexMascot variant="support" size="sm" popIn idle />
+                <TexSpeechBubble tail="top-left" tone="info" maxWidth={260}>
+                  <span className="text-[12px]">Sin actividad todavía. Cuando llegue el primer mensaje, aparece acá.</span>
+                </TexSpeechBubble>
+              </div>
             )}
           </ul>
         </section>
@@ -131,7 +154,12 @@ export default async function InicioPage() {
               </li>
             ))}
             {!cardsRes.data?.length && (
-              <div className="py-8 text-center text-sm text-fg-3">Tu IA todavía no aprendió nada. Respondé tu primera consulta.</div>
+              <div className="py-6 flex flex-col items-center gap-3">
+                <TexMascot variant="analytics" size="sm" popIn idle />
+                <TexSpeechBubble tail="top-left" tone="info" maxWidth={260}>
+                  <span className="text-[12px]">{TEX_COPY.empty.noMemory}</span>
+                </TexSpeechBubble>
+              </div>
             )}
           </ul>
         </section>

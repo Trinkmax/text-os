@@ -3,6 +3,7 @@
 import { Sidebar } from "@/components/shell/sidebar";
 import { AppHeader } from "@/components/shell/header";
 import { useFocus } from "@/components/shell/focus-context";
+import { TexFloating } from "@/components/tex";
 
 type Role = "admin" | "agent" | "readonly";
 type Membership = { org_id: string; role: Role; name: string; logo_url: string | null };
@@ -51,6 +52,7 @@ export function AppShell({
         )}
         <main className="flex-1 flex flex-col min-w-0">{children}</main>
       </div>
+      <TexFloating />
     </div>
   );
 }

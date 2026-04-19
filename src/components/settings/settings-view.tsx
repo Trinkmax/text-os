@@ -9,16 +9,12 @@ import {
   BrainCircuit,
   Palette,
   CreditCard,
-  Check,
-  ChevronRight,
   Plus,
 } from "lucide-react";
-import { InstagramIcon, MessengerIcon, WhatsAppIcon, GlobeIcon, MailIcon } from "@/components/ui/brand-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { Chip } from "@/components/ui/chip";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -26,6 +22,9 @@ import { useTheme } from "next-themes";
 import { saveAiSettings, updateOrgProfile } from "@/app/actions/settings";
 import { resetDemoSession } from "@/app/actions/orgs";
 import { TeamSection as RealTeamSection } from "@/components/settings/team-section";
+import { ChannelsSection } from "@/components/settings/channels-section";
+import type { SafeChannel } from "@/app/actions/channels";
+import { TexTip, TEX_COPY } from "@/components/tex";
 
 type Org = {
   id: string;
@@ -41,7 +40,7 @@ type Org = {
   must_escalate: string[];
 };
 
-type Channel = { id: string; type: string; status: string; label: string | null };
+type Channel = SafeChannel;
 
 const SECTIONS = [
   { id: "profile", label: "Perfil", icon: User },
@@ -112,7 +111,7 @@ export function SettingsView({
             orgName={org.name}
           />
         )}
-        {sec === "channels" && <ChannelsSection channels={channels} />}
+        {sec === "channels" && <ChannelsSection orgName={org.name} channels={channels} />}
         {sec === "appearance" && <AppearanceSection />}
         {sec === "billing" && <BillingSection />}
       </main>
@@ -131,6 +130,15 @@ function AISettings({ org }: { org: Org }) {
     <div>
       <h2 className="text-2xl font-bold mb-1">Comportamiento de la IA</h2>
       <p className="text-fg-3 text-sm mb-8">Ajustá cuánta autonomía tiene tu IA. Sin configuración técnica.</p>
+
+      <div className="mb-4">
+        <TexTip
+          id="settings-ai-threshold"
+          variant="analytics"
+          tone="info"
+          message={<span className="text-[12px]">{TEX_COPY.tips.aiThreshold}</span>}
+        />
+      </div>
 
       <section className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-5 mb-4">
         <h3 className="font-semibold mb-4">Umbrales del semáforo</h3>
@@ -324,48 +332,6 @@ function TeamSection() {
         <Button variant="secondary" className="gap-2">
           <Plus className="h-4 w-4" /> Invitar miembro
         </Button>
-      </div>
-    </div>
-  );
-}
-
-function ChannelsSection({ channels }: { channels: Channel[] }) {
-  const ALL: { type: string; label: string; icon: (p: { size?: number }) => React.JSX.Element; color: string }[] = [
-    { type: "whatsapp", label: "WhatsApp", icon: (p) => <WhatsAppIcon size={p.size ?? 16} />, color: "#25D366" },
-    { type: "instagram", label: "Instagram", icon: (p) => <InstagramIcon size={p.size ?? 16} />, color: "#E4405F" },
-    { type: "messenger", label: "Messenger", icon: (p) => <MessengerIcon size={p.size ?? 16} />, color: "#1877F2" },
-    { type: "webchat", label: "Webchat", icon: (p) => <GlobeIcon size={p.size ?? 16} />, color: "#8B5CF6" },
-    { type: "email", label: "Email", icon: (p) => <MailIcon size={p.size ?? 16} />, color: "#64748B" },
-  ];
-  const map: Record<string, Channel | undefined> = {};
-  for (const c of channels) map[c.type] = c;
-  return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6">Canales</h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {ALL.map((a) => {
-          const ch = map[a.type];
-          return (
-            <div key={a.type} className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-4 flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl flex items-center justify-center text-white" style={{ background: a.color }}>
-                {a.icon({ size: 16 })}
-              </div>
-              <div className="flex-1">
-                <div className="font-medium">{a.label}</div>
-                <div className="text-xs text-fg-3">
-                  {ch?.status === "connected" ? "Conectado" : ch?.status === "pending" ? "Pendiente" : "No conectado"}
-                </div>
-              </div>
-              {ch?.status === "connected" ? (
-                <Badge variant="green"><Check className="h-3 w-3" /> Activo</Badge>
-              ) : (
-                <Button size="sm" variant="secondary">
-                  Conectar
-                </Button>
-              )}
-            </div>
-          );
-        })}
       </div>
     </div>
   );

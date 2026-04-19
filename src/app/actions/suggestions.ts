@@ -1,8 +1,10 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createSbServer } from "@/lib/supabase/server";
 import { requireOrgId } from "@/lib/org";
+import { sendMessageViaChannel } from "@/lib/channels/send";
 
 export type SwipeAction = "send" | "dismiss" | "escalate" | "snooze" | "learn";
 
@@ -27,13 +29,39 @@ export async function resolveSuggestion(params: {
 
   if (params.action === "send" || params.action === "learn") {
     if (finalText) {
-      await sb.from("textos_messages").insert({
-        org_id: orgId,
-        conversation_id: sug.conversation_id,
-        direction: "out",
-        author: "human",
-        body: finalText,
-      });
+      // Traemos canal + contacto para poder dispatchar al proveedor externo.
+      const { data: conv } = await sb
+        .from("textos_conversations")
+        .select("id, channel_id, contact_id")
+        .eq("id", sug.conversation_id)
+        .eq("org_id", orgId)
+        .single();
+
+      let contactExternalId: string | null = null;
+      if (conv?.contact_id) {
+        const { data: contact } = await sb
+          .from("textos_contacts")
+          .select("external_id")
+          .eq("id", conv.contact_id)
+          .eq("org_id", orgId)
+          .single();
+        contactExternalId = contact?.external_id ?? null;
+      }
+
+      const { data: inserted } = await sb
+        .from("textos_messages")
+        .insert({
+          org_id: orgId,
+          conversation_id: sug.conversation_id,
+          channel_id: conv?.channel_id ?? null,
+          direction: "out",
+          author: "human",
+          body: finalText,
+          delivery_status: conv?.channel_id ? "queued" : null,
+        })
+        .select("id")
+        .single();
+
       await sb
         .from("textos_conversations")
         .update({
@@ -43,6 +71,20 @@ export async function resolveSuggestion(params: {
         })
         .eq("id", sug.conversation_id)
         .eq("org_id", orgId);
+
+      // Dispatch asincrónico al proveedor: no bloqueamos la respuesta al
+      // operador. Si falla, queda marcado en `delivery_status = 'failed'`
+      // con el error en `delivery_error`.
+      if (inserted?.id && conv?.channel_id && contactExternalId) {
+        after(async () => {
+          await sendMessageViaChannel({
+            channelId: conv.channel_id!,
+            toExternalId: contactExternalId!,
+            body: finalText,
+            messageId: inserted.id,
+          });
+        });
+      }
     }
     if (params.action === "learn" && params.learnAsCard) {
       const { data: lastIn } = await sb

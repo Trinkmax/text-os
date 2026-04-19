@@ -47,6 +47,7 @@ type _Tables = {
           email: string | null;
           avatar_url: string | null;
           channel: string | null;
+          external_id: string | null;
           stage: string;
           tags: string[];
           value: number;
@@ -67,6 +68,7 @@ type _Tables = {
           org_id: string;
           contact_id: string;
           channel: string | null;
+          channel_id: string | null;
           last_message: string | null;
           last_message_at: string | null;
           unread_count: number;
@@ -87,9 +89,13 @@ type _Tables = {
           id: string;
           conversation_id: string;
           org_id: string;
+          channel_id: string | null;
           direction: "in" | "out";
           author: "contact" | "human" | "ai" | "system";
           body: string;
+          external_id: string | null;
+          delivery_status: "queued" | "sent" | "delivered" | "failed" | null;
+          delivery_error: string | null;
           attachments: Json;
           created_at: string;
         };
@@ -210,7 +216,13 @@ type _Tables = {
           type: "whatsapp" | "instagram" | "messenger" | "email" | "webchat";
           status: "connected" | "pending" | "disconnected";
           label: string | null;
+          external_id: string | null;
+          config: Json;
+          secrets: Json;
+          verified_at: string | null;
+          last_error: string | null;
           created_at: string;
+          updated_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["textos_channels"]["Row"]> & { org_id: string; type: "whatsapp" | "instagram" | "messenger" | "email" | "webchat" };
         Update: Partial<Database["public"]["Tables"]["textos_channels"]["Row"]>;

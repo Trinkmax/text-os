@@ -21,6 +21,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
 import { cn } from "@/lib/utils";
+import { TexTip, TexEmpty, TEX_COPY } from "@/components/tex";
 
 type NodeType = "saludo" | "calif" | "faq" | "datos" | "agendar" | "pagar" | "derivar" | "cerrar";
 
@@ -45,25 +46,15 @@ const PALETTE: { type: NodeType; title: string; icon: typeof MessageCircle; sema
   { type: "cerrar", title: "Cerrar", icon: Power, semaphore: "green" },
 ];
 
-const INITIAL_NODES: FlowNode[] = [
-  { id: "1", type: "saludo", x: 80, y: 80, title: "Saludo", summary: 'Mensaje: "Hola, soy tu asistente"', semaphore: "green" },
-  { id: "2", type: "calif", x: 400, y: 80, title: "Calificación", summary: "Pregunta: ¿Qué servicio te interesa?", semaphore: "amber" },
-  { id: "3", type: "faq", x: 720, y: 40, title: "FAQ", summary: "Responde con tarjetas de conocimiento", semaphore: "green" },
-  { id: "4", type: "agendar", x: 720, y: 220, title: "Agendar", summary: "Calendario Google + confirmación", semaphore: "amber" },
-  { id: "5", type: "cerrar", x: 1040, y: 130, title: "Cierre", summary: "Mensaje final + tagging", semaphore: "green" },
-];
+interface FlowsViewProps {
+  flowName?: string | null;
+  initialNodes?: FlowNode[];
+  initialEdges?: { from: string; to: string }[];
+}
 
-const INITIAL_EDGES: { from: string; to: string }[] = [
-  { from: "1", to: "2" },
-  { from: "2", to: "3" },
-  { from: "2", to: "4" },
-  { from: "3", to: "5" },
-  { from: "4", to: "5" },
-];
-
-export function FlowsView() {
-  const [nodes, setNodes] = useState<FlowNode[]>(INITIAL_NODES);
-  const [edges] = useState(INITIAL_EDGES);
+export function FlowsView({ flowName, initialNodes = [], initialEdges = [] }: FlowsViewProps = {}) {
+  const [nodes, setNodes] = useState<FlowNode[]>(initialNodes);
+  const [edges] = useState(initialEdges);
   const [selected, setSelected] = useState<FlowNode | null>(null);
   const [testOpen, setTestOpen] = useState(false);
   const [drag, setDrag] = useState<{ id: string; ox: number; oy: number; sx: number; sy: number } | null>(null);
@@ -88,7 +79,7 @@ export function FlowsView() {
     <div className="flex flex-col h-[calc(100vh-56px)]">
       <header className="px-6 py-4 border-b border-[color:var(--border)] flex items-center gap-3">
         <h1 className="text-2xl font-bold tracking-tight">Flujos</h1>
-        <div className="text-xs text-fg-3">Atención general</div>
+        {flowName && <div className="text-xs text-fg-3">{flowName}</div>}
         <div className="flex-1" />
         <div className="flex items-center gap-1 rounded-xl border border-[color:var(--border)] bg-bg-1 p-1">
           <button onClick={() => setScale((s) => Math.max(0.5, s - 0.1))} className="h-8 w-8 flex items-center justify-center text-fg-3 hover:text-fg rounded-lg hover:bg-bg-2">
@@ -107,7 +98,15 @@ export function FlowsView() {
         </Button>
       </header>
 
-      <div className="flex-1 flex min-h-0">
+      <div className="flex-1 flex min-h-0 relative">
+        <div className="absolute top-3 right-4 z-20 max-w-xs">
+          <TexTip
+            id="flows-intro"
+            variant="default"
+            tone="info"
+            message={<span className="text-[12px]">Los flujos son como un tablero de Arkanoid. Arrastrá nodos y conectalos.</span>}
+          />
+        </div>
         {/* Palette */}
         <aside className="w-56 border-r border-[color:var(--border)] bg-bg-1 p-3">
           <div className="text-[11px] uppercase tracking-wider text-fg-3 font-medium mb-2 px-1">Nodos</div>
@@ -206,10 +205,20 @@ export function FlowsView() {
             })}
           </div>
 
-          {!selected && (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none text-center text-fg-4 text-sm">
-              Click en un nodo para editarlo. Drag para mover.
+          {nodes.length === 0 ? (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md">
+              <TexEmpty
+                variant="default"
+                size="xl"
+                message={<span>{TEX_COPY.empty.noFlows}</span>}
+              />
             </div>
+          ) : (
+            !selected && (
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none text-center text-fg-4 text-sm">
+                Click en un nodo para editarlo. Drag para mover.
+              </div>
+            )
           )}
         </div>
 
@@ -273,17 +282,12 @@ export function FlowsView() {
 }
 
 function FlowSimulator({ onClose }: { onClose: () => void }) {
-  const [msgs, setMsgs] = useState<{ from: "bot" | "me"; text: string }[]>([
-    { from: "bot", text: "¡Hola! Soy tu asistente de Barbería Monaco. ¿En qué te ayudo?" },
-  ]);
+  const [msgs, setMsgs] = useState<{ from: "bot" | "me"; text: string }[]>([]);
   const [input, setInput] = useState("");
   function send() {
     if (!input.trim()) return;
     setMsgs((m) => [...m, { from: "me", text: input }]);
     setInput("");
-    setTimeout(() => {
-      setMsgs((m) => [...m, { from: "bot", text: "Perfecto. Déjame chequear la agenda 💇" }]);
-    }, 500);
   }
   return (
     <aside className="w-[340px] border-l border-[color:var(--border)] bg-bg-1 flex flex-col">
@@ -295,6 +299,11 @@ function FlowSimulator({ onClose }: { onClose: () => void }) {
         </button>
       </header>
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
+        {msgs.length === 0 && (
+          <div className="text-center text-fg-4 text-xs py-8">
+            Escribí un mensaje para probar cómo responde tu flujo.
+          </div>
+        )}
         {msgs.map((m, i) => (
           <div key={i} className={cn("flex", m.from === "me" ? "justify-end" : "justify-start")}>
             <div

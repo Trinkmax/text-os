@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { cn, formatRelative } from "@/lib/utils";
 import { saveKnowledgeCard, convertScopeGap, deleteKnowledgeCard } from "@/app/actions/knowledge";
+import { TexEmpty, TexSays, TEX_COPY } from "@/components/tex";
 
 type Card = {
   id: string;
@@ -69,6 +70,15 @@ export function KnowledgeView({ cards, gaps }: { cards: Card[]; gaps: Gap[] }) {
 
       {gaps.length > 0 && (
         <section className="mb-8 rounded-2xl border border-[color:var(--accent-red)]/20 bg-[rgba(239,68,68,0.04)] p-5">
+          <div className="mb-3">
+            <TexSays
+              variant="analytics"
+              size="sm"
+              tone="warn"
+              message={<span className="text-[13px]">Estas son las preguntas que me dejaron sin respuesta esta semana. Tocá una y la convertimos en tarjeta.</span>}
+              maxBubbleWidth={460}
+            />
+          </div>
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="h-4 w-4 text-[color:var(--accent-red)]" />
             <h3 className="font-semibold">Scope gaps esta semana</h3>
@@ -147,9 +157,20 @@ export function KnowledgeView({ cards, gaps }: { cards: Card[]; gaps: Gap[] }) {
       </div>
 
       {!filtered.length && (
-        <div className="py-20 text-center text-fg-3">
-          {search ? "Sin coincidencias" : "Tu IA todavía no aprendió nada. Respondé una conversación y dejala guardar."}
-        </div>
+        search ? (
+          <div className="py-20 text-center text-fg-3">Sin coincidencias</div>
+        ) : (
+          <TexEmpty
+            variant="default"
+            size="xl"
+            message={<span>Soy tu memoria. Cargá la primera tarjeta y empezamos a aprender juntos.</span>}
+            action={
+              <Button onClick={() => setCreating(true)} className="gap-2">
+                <Plus className="h-4 w-4" /> Crear primera tarjeta
+              </Button>
+            }
+          />
+        )
       )}
 
       {(editing || creating) && (

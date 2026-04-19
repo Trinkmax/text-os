@@ -22,6 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { cn, initials, avatarGradient, formatRelative, money } from "@/lib/utils";
 import { createContact, updateContactStage, updateContactTags } from "@/app/actions/contacts";
+import { TexMascot, TexSpeechBubble, TEX_COPY } from "@/components/tex";
 
 type Contact = {
   id: string;
@@ -249,8 +250,13 @@ function TableView({
       {!contacts.length && (
         <tbody>
           <tr>
-            <td colSpan={7} className="py-16 text-center text-fg-3 text-sm">
-              Sin contactos. Creá uno con el botón de arriba.
+            <td colSpan={7} className="py-12">
+              <div className="flex flex-col items-center gap-3">
+                <TexMascot variant="default" size="lg" popIn idle />
+                <TexSpeechBubble tail="top-left" tone="info" maxWidth={360}>
+                  <span className="text-[13px]">{TEX_COPY.empty.noContacts}</span>
+                </TexSpeechBubble>
+              </div>
             </td>
           </tr>
         </tbody>

@@ -7,7 +7,7 @@ import { createServerClient } from "@supabase/ssr";
 // users to /login for every app route.
 // -----------------------------------------------------------------------------
 
-const PUBLIC_PATHS = ["/login", "/signup", "/auth", "/invitacion"];
+const PUBLIC_PATHS = ["/login", "/signup", "/auth", "/invitacion", "/api/webhooks"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some(

@@ -27,6 +27,19 @@
   --brand-3: #c4b5fd;
   --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.45), 0 2px 8px rgba(0, 0, 0, 0.3);
   --shadow-hover: 0 20px 60px rgba(0, 0, 0, 0.55), 0 4px 12px rgba(0, 0, 0, 0.4);
+  /* Tex mascot tokens */
+  --tex-blue: #3aa0f0;
+  --tex-blue-2: #6bb9f4;
+  --tex-blue-3: #0b3d68;
+  --tex-green: #7ed957;
+  --tex-pink: #ff9fb1;
+  --tex-bubble-bg: #f4f9ff;
+  --tex-bubble-ink: #0b1420;
+  --tex-bubble-border: #1a5a90;
+  --tex-bubble-shadow: #071a2d;
+  --tex-bubble-celebrate: #fff7c7;
+  --tex-bubble-warn: #ffe4b5;
+  --tex-bubble-info: #d8ecff;
 }
 
 .light {
@@ -43,6 +56,11 @@
   --fg-4: #71717a;
   --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
   --shadow-hover: 0 20px 60px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.08);
+  /* Tex palette stays the same across themes — the mascot has enough contrast */
+  --tex-bubble-bg: #ffffff;
+  --tex-bubble-ink: #0b1420;
+  --tex-bubble-border: #1a5a90;
+  --tex-bubble-shadow: #0b3d68;
 }
 
 @theme inline {
@@ -66,6 +84,11 @@
   --color-brand: var(--brand);
   --color-brand-2: var(--brand-2);
   --color-brand-3: var(--brand-3);
+  --color-tex-blue: var(--tex-blue);
+  --color-tex-blue-2: var(--tex-blue-2);
+  --color-tex-blue-3: var(--tex-blue-3);
+  --color-tex-green: var(--tex-green);
+  --color-tex-pink: var(--tex-pink);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --radius-sm: 8px;
@@ -304,4 +327,196 @@ kbd {
   align-items: center;
   justify-content: center;
   line-height: 1;
+}
+
+/* ============ Tex mascot ============ */
+
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+.tex-wrap {
+  display: inline-block;
+  filter: drop-shadow(0 6px 14px rgba(58, 160, 240, 0.25));
+}
+
+@keyframes texFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+.tex-idle-float {
+  animation: texFloat 4s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes texPopIn {
+  0% {
+    transform: scale(0.55) translateY(12px);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.08) translateY(-2px);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 1;
+  }
+}
+.tex-pop-in {
+  animation: texPopIn 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes texShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+.tex-shake {
+  animation: texShake 280ms ease-in-out 2;
+}
+
+@keyframes texWave {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(-6deg); }
+  75% { transform: rotate(6deg); }
+}
+.tex-wave {
+  animation: texWave 1.2s ease-in-out infinite;
+  transform-origin: 50% 80%;
+}
+
+/* Pixel-art speech bubble — no border-radius, stepped shadows for 8-bit vibe */
+.pixel-bubble {
+  position: relative;
+  background: var(--tex-bubble-bg);
+  color: var(--tex-bubble-ink);
+  padding: 14px 16px;
+  font-weight: 500;
+  line-height: 1.4;
+  border-radius: 0;
+  /* Stepped "pixel" frame: outer dark outline + drop shadow */
+  box-shadow:
+    0 -3px 0 0 var(--tex-bubble-border),
+    0 3px 0 0 var(--tex-bubble-border),
+    -3px 0 0 0 var(--tex-bubble-border),
+    3px 0 0 0 var(--tex-bubble-border),
+    0 6px 0 0 var(--tex-bubble-shadow);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+.pixel-bubble::before {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--tex-bubble-bg);
+  transform: rotate(45deg);
+  z-index: -1;
+}
+
+/* Tail: bottom-left (points down toward a mascot below) */
+.pixel-bubble[data-tail="bottom-left"]::before {
+  left: 22px;
+  bottom: -5px;
+  box-shadow:
+    3px 3px 0 0 var(--tex-bubble-border),
+    6px 6px 0 0 var(--tex-bubble-shadow);
+}
+.pixel-bubble[data-tail="bottom-right"]::before {
+  right: 22px;
+  bottom: -5px;
+  box-shadow:
+    3px 3px 0 0 var(--tex-bubble-border),
+    6px 6px 0 0 var(--tex-bubble-shadow);
+}
+.pixel-bubble[data-tail="top-left"]::before {
+  left: 22px;
+  top: -5px;
+  box-shadow: -3px -3px 0 0 var(--tex-bubble-border);
+}
+.pixel-bubble[data-tail="top-right"]::before {
+  right: 22px;
+  top: -5px;
+  box-shadow: 3px -3px 0 0 var(--tex-bubble-border);
+}
+
+.pixel-bubble[data-tone="celebrate"] {
+  background: var(--tex-bubble-celebrate);
+  --tex-bubble-bg: var(--tex-bubble-celebrate);
+}
+.pixel-bubble[data-tone="info"] {
+  background: var(--tex-bubble-info);
+  --tex-bubble-bg: var(--tex-bubble-info);
+}
+.pixel-bubble[data-tone="warn"] {
+  background: var(--tex-bubble-warn);
+  --tex-bubble-bg: var(--tex-bubble-warn);
+}
+
+/* Pixel-styled button inside a Tex bubble */
+.pixel-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--tex-blue);
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  box-shadow:
+    0 -2px 0 0 var(--tex-blue-3),
+    0 2px 0 0 var(--tex-blue-3),
+    -2px 0 0 0 var(--tex-blue-3),
+    2px 0 0 0 var(--tex-blue-3),
+    0 4px 0 0 var(--tex-bubble-shadow);
+  transition: transform 120ms ease-out;
+}
+.pixel-button:hover {
+  transform: translateY(-1px);
+}
+.pixel-button:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 -2px 0 0 var(--tex-blue-3),
+    0 2px 0 0 var(--tex-blue-3),
+    -2px 0 0 0 var(--tex-blue-3),
+    2px 0 0 0 var(--tex-blue-3),
+    0 0 0 0 var(--tex-bubble-shadow);
+}
+
+/* Onboarding mouth-cycling: swap between idle/talk images */
+.tex-talking-container img {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 60ms linear;
+}
+.tex-talking-container img[data-active="true"] {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tex-idle-float,
+  .tex-pop-in,
+  .tex-wave,
+  .tex-shake,
+  .pixel-bubble-typing-caret::after {
+    animation: none !important;
+  }
+  .tex-wrap {
+    filter: none;
+  }
 }
