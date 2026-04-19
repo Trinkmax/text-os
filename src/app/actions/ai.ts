@@ -328,7 +328,8 @@ export async function testAiProvider(id: string): Promise<TestResult> {
         prompt:
           'Respondé sólo con las tres letras "ok". No agregues nada más, ni puntuación.',
         temperature: 0,
-        maxOutputTokens: 8,
+        // OpenAI exige >= 16. Damos algo de headroom para no rozar el límite.
+        maxOutputTokens: 32,
       });
       sample = text.trim().slice(0, 80) || "(respuesta vacía)";
       // usar `defaults` nada más que para asegurar referencia en build.
