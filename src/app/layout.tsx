@@ -9,7 +9,6 @@ export const metadata: Metadata = {
   title: "TextOS — CRM conversacional con IA",
   description:
     "Unificá WhatsApp, Instagram, email y webchat en una sola bandeja. La IA aprende de vos.",
-  icons: { icon: "/favicon.ico" },
 };
 
 export const viewport: Viewport = {
