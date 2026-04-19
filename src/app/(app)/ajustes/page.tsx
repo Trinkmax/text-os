@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getActiveOrg } from "@/lib/org";
 import { createSbServer } from "@/lib/supabase/server";
 import { listTeamData } from "@/app/actions/team";
+import { listAiProviders } from "@/app/actions/ai";
 import { SettingsView } from "@/components/settings/settings-view";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,7 @@ export default async function AjustesPage({
     .eq("org_id", active.org.id)
     .order("created_at", { ascending: true });
   const team = await listTeamData();
+  const aiProviders = await listAiProviders();
   const params = (await searchParams) ?? {};
 
   return (
@@ -36,6 +38,7 @@ export default async function AjustesPage({
       team={team}
       role={active.role}
       currentUserId={user?.id ?? ""}
+      aiProviders={aiProviders}
       initialSection={params.tab === "equipo" ? "team" : undefined}
     />
   );

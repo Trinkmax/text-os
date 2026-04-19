@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentOrgId } from "@/lib/org";
 import { createSbServer } from "@/lib/supabase/server";
 import { SwipeInbox } from "@/components/swipe/swipe-inbox";
+import type { Json } from "@/lib/supabase/types";
 
 export const dynamic = "force-dynamic";
 
@@ -10,12 +11,18 @@ export default async function SwipePage() {
   if (!orgId) redirect("/onboarding");
   const sb = await createSbServer();
 
-  const [{ data: pending }, { data: autosent }, { count: totalToday }] = await Promise.all([
+  const [
+    { data: pending },
+    { data: autosent },
+    { count: totalToday },
+    { data: org },
+    { count: generationProvidersCount },
+  ] = await Promise.all([
     sb
       .from("textos_suggestions")
       .select(
         "id,proposed_text,confidence,semaphore,reason,status,created_at,conversation_id,org_id," +
-          "textos_conversations!inner(id,channel,contact_id,last_message,last_message_at,textos_contacts!inner(id,name,avatar_url))"
+          "textos_conversations!inner(id,channel,contact_id,last_message,last_message_at,textos_contacts!inner(id,name,avatar_url))",
       )
       .eq("org_id", orgId)
       .eq("status", "pending")
@@ -24,7 +31,7 @@ export default async function SwipePage() {
     sb
       .from("textos_suggestions")
       .select(
-        "id,proposed_text,confidence,status,created_at,conversation_id,textos_conversations!inner(id,channel,textos_contacts!inner(name,avatar_url))"
+        "id,proposed_text,confidence,status,created_at,conversation_id,textos_conversations!inner(id,channel,textos_contacts!inner(name,avatar_url))",
       )
       .eq("org_id", orgId)
       .eq("status", "auto_sent")
@@ -36,6 +43,17 @@ export default async function SwipePage() {
       .eq("org_id", orgId)
       .eq("direction", "out")
       .gte("created_at", new Date(new Date().setHours(0, 0, 0, 0)).toISOString()),
+    sb
+      .from("textos_orgs")
+      .select("shadow_mode")
+      .eq("id", orgId)
+      .single(),
+    sb
+      .from("textos_ai_providers")
+      .select("id", { count: "exact", head: true })
+      .eq("org_id", orgId)
+      .eq("role", "generation")
+      .eq("is_active", true),
   ]);
 
   const { data: learnedToday } = await sb
@@ -51,8 +69,10 @@ export default async function SwipePage() {
     pending: pending?.length || 0,
   };
 
-  // Pull last inbound messages for each suggestion's conversation (for card body)
+  // Pull last inbound + grounding cards in batch.
   const convIds = [...new Set((pending || []).map((p) => p.conversation_id))];
+  const sugIds = (pending || []).map((p) => p.id);
+
   const lastInboundByConv: Record<string, string> = {};
   if (convIds.length) {
     const { data: msgs } = await sb
@@ -66,9 +86,46 @@ export default async function SwipePage() {
     }
   }
 
+  // Grounding por sugerencia: leemos los runs y mapeamos cardIds → cards.
+  const groundingBySug: Record<string, Array<{ id: string; topic: string; question: string; answer: string }>> = {};
+  if (sugIds.length) {
+    type RunRow = { suggestion_id: string | null; factors: Json | null };
+    const { data: runsRaw } = await sb
+      .from("textos_ai_runs")
+      .select("suggestion_id, factors")
+      .in("suggestion_id", sugIds);
+    const runs = (runsRaw ?? []) as unknown as RunRow[];
+    const allCardIds = new Set<string>();
+    const sugToCardIds: Record<string, string[]> = {};
+    for (const r of runs) {
+      const f = r.factors as { retrieval?: { cardIds?: string[] } } | null;
+      const ids = f?.retrieval?.cardIds ?? [];
+      if (r.suggestion_id) {
+        sugToCardIds[r.suggestion_id] = ids;
+        ids.forEach((i) => allCardIds.add(i));
+      }
+    }
+    if (allCardIds.size > 0) {
+      const { data: cardRows } = await sb
+        .from("textos_knowledge_cards")
+        .select("id, topic, question, answer")
+        .eq("org_id", orgId)
+        .in("id", [...allCardIds]);
+      const byId = new Map((cardRows ?? []).map((c) => [c.id, c]));
+      for (const sid of sugIds) {
+        const ids = sugToCardIds[sid] ?? [];
+        groundingBySug[sid] = ids
+          .map((i) => byId.get(i))
+          .filter(Boolean) as Array<{ id: string; topic: string; question: string; answer: string }>;
+      }
+    }
+  }
+
   return (
     <SwipeInbox
       orgId={orgId}
+      shadowMode={!!org?.shadow_mode}
+      hasGenerationProvider={!!generationProvidersCount && generationProvidersCount > 0}
       initialPending={(pending || []).map((p) => ({
         id: p.id,
         proposedText: p.proposed_text || "",
@@ -81,6 +138,7 @@ export default async function SwipePage() {
         contactName: (p as never as { textos_conversations: { textos_contacts: { name: string } } }).textos_conversations.textos_contacts.name,
         contactAvatar: (p as never as { textos_conversations: { textos_contacts: { avatar_url?: string | null } } }).textos_conversations.textos_contacts.avatar_url || null,
         inboundMessage: lastInboundByConv[p.conversation_id] || "",
+        groundingCards: groundingBySug[p.id] || [],
       }))}
       initialAutosent={(autosent || []).map((a) => ({
         id: a.id,

@@ -1,6 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { after } from "next/server";
 import type { Database } from "@/lib/supabase/types";
 import { createSbService } from "./service";
+import { runSuggestionPipeline } from "@/lib/ai/pipeline";
 
 type Sb = SupabaseClient<Database>;
 
@@ -45,6 +47,26 @@ export async function ingestInboundMessage(evt: InboundEvent): Promise<IngestRes
     if (!inserted.ok) return inserted;
 
     await touchConversation(sb, conversation.id, evt);
+
+    // Disparamos el pipeline de IA después de responder al webhook (el caller
+    // ya está dentro de un `after()`, pero re-envolvemos por seguridad: si
+    // este wrapper se llama desde otro contexto, no bloquea igual). El lock
+    // por message_id en el pipeline garantiza que sólo se ejecuta una vez.
+    if (!inserted.deduplicated && inserted.messageId) {
+      after(async () => {
+        try {
+          await runSuggestionPipeline({
+            orgId: evt.orgId,
+            messageId: inserted.messageId,
+            conversationId: conversation.id,
+            channelId: evt.channelId ?? null,
+            body: evt.body,
+          });
+        } catch {
+          // El pipeline ya se autocura: traces + run en failed. No re-tirar.
+        }
+      });
+    }
 
     return {
       ok: true,

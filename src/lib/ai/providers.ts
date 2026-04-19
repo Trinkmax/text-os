@@ -106,6 +106,16 @@ export async function getActiveLanguageModel(
   orgId: string,
   role: Role,
 ): Promise<{ model: LanguageModel; row: ProviderRow } | null> {
+  const data = await getActiveProviderRow(orgId, role);
+  if (!data) return null;
+  return { model: resolveLanguageModel(data), row: data };
+}
+
+/** Sólo la fila — útil cuando vas a usar embed/generateObject por separado. */
+export async function getActiveProviderRow(
+  orgId: string,
+  role: Role,
+): Promise<ProviderRow | null> {
   const sb = createSbService();
   const { data } = await sb
     .from("textos_ai_providers")
@@ -117,15 +127,14 @@ export async function getActiveLanguageModel(
     .order("priority", { ascending: true })
     .limit(1)
     .maybeSingle();
-  if (!data) return null;
-  return { model: resolveLanguageModel(data), row: data };
+  return data;
 }
 
 /**
  * Convierte una fila en EmbeddingModel. AI SDK v6 tiene APIs separadas
  * para embeddings (`.embedding(modelId)` / `.textEmbeddingModel(modelId)`).
  */
-export function resolveEmbeddingModel(row: ProviderRow): EmbeddingModel<string> {
+export function resolveEmbeddingModel(row: ProviderRow): EmbeddingModel {
   const secrets = getSecrets(row);
   const config = getConfig(row);
   const provider = row.provider as ProviderId;

@@ -52,16 +52,26 @@ export function ReportsView({
           <h1 className="text-xl md:text-2xl font-bold tracking-tight">Reportes</h1>
           <p className="text-fg-3 text-sm mt-0.5">Lo que hizo tu IA. Lo que te falta enseñarle.</p>
         </div>
-        <Select value={range} onValueChange={setRange}>
-          <SelectTrigger className="w-full sm:w-36 h-11 sm:h-9 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="24h">Últimas 24h</SelectItem>
-            <SelectItem value="7d">Últimos 7 días</SelectItem>
-            <SelectItem value="30d">Últimos 30 días</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/reportes/ia"
+            className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg border border-[color:var(--border)] bg-bg-1 hover:bg-bg-2 text-xs font-medium text-fg-2"
+          >
+            <Zap className="h-3.5 w-3.5 text-brand-2" />
+            Salud de la IA
+            <ArrowRight className="h-3 w-3 opacity-60" />
+          </Link>
+          <Select value={range} onValueChange={setRange}>
+            <SelectTrigger className="w-full sm:w-36 h-11 sm:h-9 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="24h">Últimas 24h</SelectItem>
+              <SelectItem value="7d">Últimos 7 días</SelectItem>
+              <SelectItem value="30d">Últimos 30 días</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </header>
 
       <div className="mb-6">

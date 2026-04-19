@@ -1,8 +1,22 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
-import { BrainCircuit, Plus, Search, Sparkles, TrendingUp, X, Zap } from "lucide-react";
+import {
+  AlertTriangle,
+  BrainCircuit,
+  CheckCircle2,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Search,
+  Sparkles,
+  TrendingUp,
+  Zap,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,9 +24,17 @@ import { Chip } from "@/components/ui/chip";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from "@/components/ui/dialog";
-import { cn, formatRelative } from "@/lib/utils";
-import { saveKnowledgeCard, convertScopeGap, deleteKnowledgeCard } from "@/app/actions/knowledge";
-import { TexEmpty, TexSays, TEX_COPY } from "@/components/tex";
+import { cn } from "@/lib/utils";
+import {
+  saveKnowledgeCard,
+  convertScopeGap,
+  deleteKnowledgeCard,
+  reindexAllCards,
+} from "@/app/actions/knowledge";
+import { createClient } from "@/lib/supabase/client";
+import { TexEmpty, TexSays } from "@/components/tex";
+
+export type EmbeddingState = "fresh" | "stale" | "indexing" | "failed" | "no_provider";
 
 type Card = {
   id: string;
@@ -25,17 +47,62 @@ type Card = {
   usage_count: number;
   updated_at: string;
   needs_review: boolean;
+  embedding_state: EmbeddingState;
 };
 
 type Gap = { id: string; topic: string; sample_question: string | null; count: number };
 
-export function KnowledgeView({ cards, gaps }: { cards: Card[]; gaps: Gap[] }) {
+type IndexStatus = {
+  total: number;
+  fresh: number;
+  stale: number;
+  indexing: number;
+  failed: number;
+  no_provider: number;
+  has_embedding_provider: boolean;
+  last_indexed_at: string | null;
+};
+
+export function KnowledgeView({
+  orgId,
+  cards: initialCards,
+  gaps,
+  indexStatus,
+}: {
+  orgId: string;
+  cards: Card[];
+  gaps: Gap[];
+  indexStatus: IndexStatus;
+}) {
+  const router = useRouter();
+  const [cards, setCards] = useState<Card[]>(initialCards);
+  // Realtime: refrescamos badges sin recargar cuando cambia embedding_state
+  // (el indexador asíncrono actualiza esa columna en background).
+  useEffect(() => {
+    const sb = createClient();
+    const ch = sb
+      .channel(`kcards-${orgId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "textos_knowledge_cards", filter: `org_id=eq.${orgId}` },
+        (payload) => {
+          const next = payload.new as { id: string; embedding_state: EmbeddingState };
+          setCards((prev) => prev.map((c) => (c.id === next.id ? { ...c, embedding_state: next.embedding_state } : c)));
+        },
+      )
+      .subscribe();
+    return () => {
+      sb.removeChannel(ch);
+    };
+  }, [orgId]);
+
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<"usage" | "confidence" | "recent">("usage");
   const [originFilter, setOriginFilter] = useState<"all" | "onboarding" | "learned" | "manual">("all");
   const [editing, setEditing] = useState<Card | null>(null);
   const [creating, setCreating] = useState(false);
   const [convertGap, setConvertGap] = useState<Gap | null>(null);
+
 
   const filtered = useMemo(() => {
     let arr = cards;
@@ -66,6 +133,8 @@ export function KnowledgeView({ cards, gaps }: { cards: Card[]; gaps: Gap[] }) {
           <Plus className="h-4 w-4" /> Agregar tarjeta
         </Button>
       </header>
+
+      <IndexStatusBanner status={indexStatus} cards={cards} onRefresh={() => router.refresh()} />
 
       {gaps.length > 0 && (
         <section className="mb-8 rounded-2xl border border-[color:var(--accent-red)]/20 bg-[rgba(239,68,68,0.04)] p-5">
@@ -150,8 +219,11 @@ export function KnowledgeView({ cards, gaps }: { cards: Card[]; gaps: Gap[] }) {
               className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-4 hover:border-[color:var(--border-strong)] cursor-pointer transition-all group"
             >
               <div className="flex items-start justify-between gap-2 mb-2">
-                <div className="text-[10px] uppercase tracking-wider font-medium text-brand-2">{c.topic}</div>
-                <OriginBadge origin={c.origin} />
+                <div className="text-[10px] uppercase tracking-wider font-medium text-brand-2 truncate flex-1">{c.topic}</div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <EmbeddingDot state={c.embedding_state} />
+                  <OriginBadge origin={c.origin} />
+                </div>
               </div>
               <h3 className="font-semibold text-fg leading-snug mb-2 line-clamp-2">{c.question}</h3>
               <p className="text-sm text-fg-2 line-clamp-3 leading-relaxed mb-3">{c.answer}</p>
@@ -193,6 +265,124 @@ export function KnowledgeView({ cards, gaps }: { cards: Card[]; gaps: Gap[] }) {
 
       {convertGap && <ConvertGapModal gap={convertGap} onClose={() => setConvertGap(null)} />}
     </div>
+  );
+}
+
+function IndexStatusBanner({
+  status,
+  cards,
+  onRefresh,
+}: {
+  status: IndexStatus;
+  cards: Card[];
+  onRefresh: () => void;
+}) {
+  const [isPending, start] = useTransition();
+  // Combinamos status del server con cards live (Realtime los actualiza).
+  const live = useMemo(() => {
+    const counts = { fresh: 0, stale: 0, indexing: 0, failed: 0, no_provider: 0 };
+    for (const c of cards) counts[c.embedding_state] = (counts[c.embedding_state] ?? 0) + 1;
+    return counts;
+  }, [cards]);
+
+  const pending = live.stale + live.failed;
+  const indexing = live.indexing;
+
+  if (!status.has_embedding_provider) {
+    return (
+      <div className="mb-4 rounded-2xl border border-[rgba(245,158,11,0.25)] bg-[rgba(245,158,11,0.04)] p-4 flex items-start gap-3">
+        <AlertTriangle className="h-5 w-5 text-[color:var(--accent-amber)] shrink-0 mt-0.5" />
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-sm">Sin búsqueda semántica</div>
+          <p className="text-xs text-fg-3 mt-0.5">
+            Conectá un modelo de embeddings y empiezo a buscar tus tarjetas por significado, no sólo por palabras.
+          </p>
+        </div>
+        <Link href="/ajustes?tab=ia">
+          <Button size="sm" variant="secondary" className="gap-1.5 shrink-0">
+            <Sparkles className="h-3.5 w-3.5" /> Conectar
+          </Button>
+        </Link>
+      </div>
+    );
+  }
+
+  if (cards.length === 0) return null;
+
+  const allFresh = pending === 0 && indexing === 0 && live.fresh > 0;
+
+  return (
+    <div className="mb-4 rounded-2xl border border-[color:var(--border)] bg-bg-1 p-4 flex flex-wrap items-center gap-3">
+      <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+        {indexing > 0 ? (
+          <Loader2 className="h-4 w-4 text-brand-2 animate-spin" aria-hidden />
+        ) : allFresh ? (
+          <CheckCircle2 className="h-4 w-4 text-[color:var(--accent-green)]" aria-hidden />
+        ) : pending > 0 ? (
+          <RefreshCw className="h-4 w-4 text-[color:var(--accent-amber)]" aria-hidden />
+        ) : (
+          <BrainCircuit className="h-4 w-4 text-fg-3" aria-hidden />
+        )}
+        <div className="text-sm">
+          {indexing > 0 ? (
+            <span>Actualizando memoria de la IA — {indexing} en progreso…</span>
+          ) : pending > 0 ? (
+            <span>
+              <b>{pending}</b> tarjeta{pending === 1 ? "" : "s"} sin re-indexar.{" "}
+              <span className="text-fg-3">Indexalas para que la IA las pueda usar.</span>
+            </span>
+          ) : (
+            <span className="text-fg-3">
+              <b className="text-fg">{live.fresh}</b> indexadas. Memoria al día.
+            </span>
+          )}
+        </div>
+      </div>
+      {pending > 0 && (
+        <Button
+          size="sm"
+          variant="secondary"
+          disabled={isPending}
+          className="gap-1.5"
+          onClick={() =>
+            start(async () => {
+              const r = await reindexAllCards();
+              if ("ok" in r && r.ok) {
+                toast.success(`Indexé ${r.indexed} tarjeta${r.indexed === 1 ? "" : "s"}.`);
+              } else if ("error" in r) {
+                toast.error(r.error);
+              }
+              onRefresh();
+            })
+          }
+        >
+          {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          Indexar pendientes
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function EmbeddingDot({ state }: { state: EmbeddingState }) {
+  const meta: Record<EmbeddingState, { color: string; label: string }> = {
+    fresh: { color: "#10B981", label: "Memoria al día" },
+    stale: { color: "#F59E0B", label: "Pendiente de indexar" },
+    indexing: { color: "#8B5CF6", label: "Actualizando memoria…" },
+    failed: { color: "#EF4444", label: "Falló la indexación" },
+    no_provider: { color: "#64748B", label: "Sin búsqueda semántica" },
+  };
+  const m = meta[state];
+  return (
+    <span
+      title={m.label}
+      aria-label={m.label}
+      className={cn(
+        "inline-block h-1.5 w-1.5 rounded-full",
+        state === "indexing" && "animate-pulse",
+      )}
+      style={{ background: m.color, boxShadow: `0 0 6px ${m.color}` }}
+    />
   );
 }
 

@@ -9,22 +9,19 @@ import {
   BrainCircuit,
   Palette,
   CreditCard,
-  Plus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useTheme } from "next-themes";
-import { saveAiSettings, updateOrgProfile } from "@/app/actions/settings";
+import { updateOrgProfile } from "@/app/actions/settings";
 import { resetDemoSession } from "@/app/actions/orgs";
 import { TeamSection as RealTeamSection } from "@/components/settings/team-section";
 import { ChannelsSection } from "@/components/settings/channels-section";
+import { AiSection } from "@/components/settings/ai-section";
 import type { SafeChannel } from "@/app/actions/channels";
-import { TexTip, TEX_COPY } from "@/components/tex";
+import type { SafeAiProvider } from "@/app/actions/ai";
 
 type Org = {
   id: string;
@@ -69,6 +66,7 @@ export function SettingsView({
   team,
   role,
   currentUserId,
+  aiProviders,
   initialSection,
 }: {
   org: Org;
@@ -76,6 +74,7 @@ export function SettingsView({
   team: { members: Member[]; invites: Invite[] };
   role: Role;
   currentUserId: string;
+  aiProviders: SafeAiProvider[];
   initialSection?: string;
 }) {
   const [sec, setSec] = useState(initialSection ?? "ai");
@@ -122,7 +121,7 @@ export function SettingsView({
         })}
       </aside>
       <main className="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-10 py-6 md:py-8 max-w-3xl w-full mx-auto md:mx-0">
-        {sec === "ai" && <AISettings org={org} />}
+        {sec === "ai" && <AiSection org={org} providers={aiProviders} />}
         {sec === "profile" && <ProfileSection org={org} />}
         {sec === "org" && <OrgSection org={org} />}
         {sec === "team" && (
@@ -138,138 +137,6 @@ export function SettingsView({
         {sec === "appearance" && <AppearanceSection />}
         {sec === "billing" && <BillingSection />}
       </main>
-    </div>
-  );
-}
-
-function AISettings({ org }: { org: Org }) {
-  const [tAuto, setTAuto] = useState(Math.round(org.threshold_auto * 100));
-  const [tSuggest, setTSuggest] = useState(Math.round(org.threshold_suggest * 100));
-  const [shadow, setShadow] = useState(org.shadow_mode);
-  const [tone, setTone] = useState(org.tone);
-  const [isPending, start] = useTransition();
-
-  return (
-    <div>
-      <h2 className="text-2xl font-bold mb-1">Comportamiento de la IA</h2>
-      <p className="text-fg-3 text-sm mb-8">Ajustá cuánta autonomía tiene tu IA. Sin configuración técnica.</p>
-
-      <div className="mb-4">
-        <TexTip
-          id="settings-ai-threshold"
-          variant="analytics"
-          tone="info"
-          message={<span className="text-[12px]">{TEX_COPY.tips.aiThreshold}</span>}
-        />
-      </div>
-
-      <section className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-5 mb-4">
-        <h3 className="font-semibold mb-4">Umbrales del semáforo</h3>
-        <div className="space-y-6">
-          <ThresholdRow
-            color="green"
-            label="Responder sola si la confianza es"
-            value={tAuto}
-            onChange={setTAuto}
-            hint="Por encima de esto la IA manda sin preguntarte."
-          />
-          <ThresholdRow
-            color="amber"
-            label="Sugerir una respuesta si es"
-            value={tSuggest}
-            onChange={setTSuggest}
-            hint="Entre este valor y el anterior, la IA te muestra sugerencia para aprobar."
-          />
-          <div className="rounded-xl border border-[color:var(--accent-red)]/25 bg-[rgba(239,68,68,0.04)] p-3 text-sm text-fg-2">
-            <b className="text-[color:var(--accent-red-2)]">Debajo de {tSuggest}%</b>: siempre te pasa la consulta a vos.
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-5 mb-4">
-        <div className="flex items-start gap-3">
-          <Switch checked={shadow} onCheckedChange={setShadow} className="mt-1" />
-          <div>
-            <div className="font-semibold">Modo sombra</div>
-            <div className="text-sm text-fg-3 mt-0.5">
-              La IA prepara sugerencias pero <b>nunca envía sola</b>. Útil mientras la entrenás al principio.
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-[color:var(--border)] bg-bg-1 p-5 mb-4">
-        <h3 className="font-semibold mb-3">Tono general</h3>
-        <div className="grid grid-cols-2 gap-2">
-          {[
-            { id: "formal", label: "Formal" },
-            { id: "casual", label: "Casual" },
-            { id: "amigable", label: "Amigable" },
-            { id: "neutro", label: "Neutro" },
-          ].map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTone(t.id)}
-              className={cn(
-                "rounded-xl border p-3 text-left transition",
-                tone === t.id ? "border-brand-2 bg-[rgba(139,92,246,0.08)]" : "border-[color:var(--border)] bg-bg-2"
-              )}
-            >
-              <div className="font-medium">{t.label}</div>
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <div className="flex justify-end">
-        <Button
-          disabled={isPending}
-          onClick={() =>
-            start(async () => {
-              await saveAiSettings({
-                threshold_auto: tAuto / 100,
-                threshold_suggest: tSuggest / 100,
-                shadow_mode: shadow,
-                tone,
-              });
-              toast.success("Configuración guardada");
-            })
-          }
-        >
-          Guardar cambios
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function ThresholdRow({
-  color,
-  label,
-  value,
-  onChange,
-  hint,
-}: {
-  color: "green" | "amber";
-  label: string;
-  value: number;
-  onChange: (v: number) => void;
-  hint: string;
-}) {
-  const hex = color === "green" ? "#10B981" : "#F59E0B";
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-2 text-sm">
-          <span className={`h-2 w-2 rounded-full dot-${color}`} />
-          {label}
-        </div>
-        <span className="font-mono text-sm" style={{ color: hex }}>
-          {value}%
-        </span>
-      </div>
-      <Slider value={[value]} onValueChange={([v]) => onChange(v)} min={0} max={100} step={1} />
-      <div className="text-xs text-fg-3 mt-1.5">{hint}</div>
     </div>
   );
 }
@@ -324,37 +191,6 @@ function OrgSection({ org }: { org: Org }) {
             Guardar
           </Button>
         </div>
-      </div>
-    </div>
-  );
-}
-
-function TeamSection() {
-  const roles = [
-    { name: "Nacho", email: "nacho@negocio.com", role: "admin", color: "#8B5CF6" },
-    { name: "Juan", email: "juan@negocio.com", role: "agente", color: "#10B981" },
-  ];
-  return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6">Equipo</h2>
-      <div className="rounded-2xl border border-[color:var(--border)] bg-bg-1 overflow-hidden">
-        {roles.map((r, i) => (
-          <div key={i} className="flex items-center gap-3 px-5 py-4 border-b border-[color:var(--border)] last:border-0">
-            <div className="h-9 w-9 rounded-full flex items-center justify-center text-white font-semibold" style={{ background: r.color }}>
-              {r.name[0]}
-            </div>
-            <div className="flex-1">
-              <div className="font-medium">{r.name}</div>
-              <div className="text-xs text-fg-3">{r.email}</div>
-            </div>
-            <Badge variant={r.role === "admin" ? "brand" : "default"}>{r.role}</Badge>
-          </div>
-        ))}
-      </div>
-      <div className="mt-3">
-        <Button variant="secondary" className="gap-2">
-          <Plus className="h-4 w-4" /> Invitar miembro
-        </Button>
       </div>
     </div>
   );

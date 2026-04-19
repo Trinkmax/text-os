@@ -1,38 +1,32 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useState, useTransition } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   ArrowLeft,
   ArrowRight,
   ArrowUp,
   ArrowDown,
-  Clock,
   Focus,
-  Pencil,
   Send,
   Sparkles,
   ThumbsDown,
   Undo2,
-  X,
   CheckCircle2,
-  AlertTriangle,
-  Eye,
-  Instagram,
-  Facebook,
-  MessageCircle as WhatsApp,
-  Globe,
-  Mail,
+  EyeOff,
+  Plug,
+  BrainCircuit,
 } from "lucide-react";
 import { toast } from "sonner";
-import { SwipeCard, type Card } from "@/components/swipe/swipe-card";
+import { SwipeCard, type Card, type GroundingCard } from "@/components/swipe/swipe-card";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { cn, formatRelative } from "@/lib/utils";
 import { resolveSuggestion, undoResolution, flagAutosend } from "@/app/actions/suggestions";
 import { useFocus } from "@/components/shell/focus-context";
 import { createClient } from "@/lib/supabase/client";
-import { Switch } from "@/components/ui/switch";
 import { TexMascot, TexSpeechBubble, TEX_COPY } from "@/components/tex";
 
 type Autosent = {
@@ -50,21 +44,83 @@ export function SwipeInbox({
   initialPending,
   initialAutosent,
   stats,
+  shadowMode,
+  hasGenerationProvider,
 }: {
   orgId: string;
   initialPending: Card[];
   initialAutosent: Autosent[];
   stats: Stats;
+  shadowMode: boolean;
+  hasGenerationProvider: boolean;
 }) {
   const [cards, setCards] = useState<Card[]>(initialPending);
   const [autosent, setAutosent] = useState<Autosent[]>(initialAutosent);
   const [tab, setTab] = useState<"pending" | "autosent">("pending");
   const [lastResolution, setLastResolution] = useState<{ id: string; at: number; label: string } | null>(null);
   const { focus, setFocus } = useFocus();
-  const [isPending, start] = useTransition();
-  const cardRef = useRef<HTMLDivElement>(null);
+  const [, start] = useTransition();
   const [editing, setEditing] = useState(false);
   const [editText, setEditText] = useState("");
+  const [groundingPreview, setGroundingPreview] = useState<GroundingCard | null>(null);
+  // Runs en vuelo (status='running') — pintamos el indicador "Tex pensando".
+  // Se limpian al recibir UPDATE con status terminal o suggestion_id.
+  const [thinkingRunIds, setThinkingRunIds] = useState<Set<string>>(new Set());
+
+  // Realtime: AI runs en vuelo → indicador "Tex pensando".
+  useEffect(() => {
+    const sb = createClient();
+    const ch = sb
+      .channel(`thinking-${orgId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "textos_ai_runs",
+          filter: `org_id=eq.${orgId}`,
+        },
+        (payload) => {
+          const row = payload.new as { id: string; status: string };
+          if (row.status === "running") {
+            setThinkingRunIds((p) => {
+              const next = new Set(p);
+              next.add(row.id);
+              return next;
+            });
+          }
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "textos_ai_runs",
+          filter: `org_id=eq.${orgId}`,
+        },
+        (payload) => {
+          const row = payload.new as { id: string; status: string };
+          if (row.status !== "running") {
+            setThinkingRunIds((p) => {
+              if (!p.has(row.id)) return p;
+              const next = new Set(p);
+              next.delete(row.id);
+              return next;
+            });
+          }
+        },
+      )
+      .subscribe();
+    // Auto-expirar runs huérfanos (red de seguridad si se pierde un UPDATE).
+    const interval = window.setInterval(() => {
+      setThinkingRunIds((p) => (p.size === 0 ? p : new Set()));
+    }, 30_000);
+    return () => {
+      sb.removeChannel(ch);
+      window.clearInterval(interval);
+    };
+  }, [orgId]);
 
   // Realtime: new pending suggestions push into the deck
   useEffect(() => {
@@ -197,7 +253,7 @@ export function SwipeInbox({
           editedText,
           learnAsCard: learn,
         });
-      } catch (e) {
+      } catch {
         toast.error("No se pudo completar la acción");
       }
     });
@@ -214,10 +270,24 @@ export function SwipeInbox({
     });
   }
 
-  const top = cards[0];
-
   return (
     <div className={cn("relative min-h-[100dvh] md:min-h-[calc(100dvh-56px)] flex flex-col")}>
+      {/* Shadow mode persistent banner */}
+      {shadowMode && (
+        <div
+          role="status"
+          className="shrink-0 mx-3 sm:mx-6 mt-3 inline-flex items-center gap-2 rounded-xl border border-[rgba(245,158,11,0.25)] bg-[rgba(245,158,11,0.06)] px-3 py-1.5 text-[12px] text-[color:var(--accent-amber)]"
+        >
+          <EyeOff className="h-3.5 w-3.5" aria-hidden />
+          <span><b>Modo sombra:</b> nada sale sin que vos apruebes.</span>
+          <Link
+            href="/ajustes?tab=ia"
+            className="ml-auto text-[11px] underline-offset-4 hover:underline text-[color:var(--accent-amber)]"
+          >
+            Cambiar
+          </Link>
+        </div>
+      )}
       {/* Header inside view */}
       <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-2 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         <div>
@@ -268,8 +338,12 @@ export function SwipeInbox({
         </div>
       </div>
 
+      <ThinkingIndicator count={thinkingRunIds.size} active={tab === "pending"} />
+
       {tab === "autosent" ? (
-        <AutosendsFeed items={autosent} orgId={orgId} onFlag={(id) => setAutosent((p) => p.filter((x) => x.id !== id))} />
+        <AutosendsFeed items={autosent} onFlag={(id) => setAutosent((p) => p.filter((x) => x.id !== id))} />
+      ) : !hasGenerationProvider ? (
+        <NoProviderEmpty />
       ) : (
         <>
           {cards.length === 0 ? (
@@ -299,6 +373,7 @@ export function SwipeInbox({
                         setEditText(c.proposedText);
                       }}
                       onResolve={(action, editedText, learn) => doAction(c, action, editedText, learn)}
+                      onShowGrounding={(g) => setGroundingPreview(g)}
                     />
                   ))}
                 </AnimatePresence>
@@ -309,6 +384,30 @@ export function SwipeInbox({
           )}
         </>
       )}
+
+      {/* Sheet de preview de la knowledge card que respaldó la respuesta */}
+      <Sheet open={!!groundingPreview} onOpenChange={(o) => !o && setGroundingPreview(null)}>
+        <SheetContent side="right" className="sm:max-w-md">
+          <SheetHeader>
+            <div className="text-[10px] uppercase tracking-wider text-brand-2 font-medium">
+              {groundingPreview?.topic}
+            </div>
+            <SheetTitle>{groundingPreview?.question}</SheetTitle>
+            <SheetDescription>De acá viene la propuesta de la IA.</SheetDescription>
+          </SheetHeader>
+          <div className="flex-1 overflow-y-auto px-5 py-4">
+            <div className="rounded-2xl border border-[color:var(--border)] bg-bg-2 p-4 text-sm text-fg leading-relaxed whitespace-pre-wrap">
+              {groundingPreview?.answer}
+            </div>
+            <Link
+              href="/conocimiento"
+              className="inline-flex items-center gap-1.5 text-xs text-brand-2 hover:text-brand-3 mt-4"
+            >
+              Editar en Conocimiento <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Undo toast */}
       <AnimatePresence>
@@ -439,13 +538,77 @@ function EmptyDeck({ stats }: { stats: Stats }) {
   );
 }
 
+function ThinkingIndicator({ count, active }: { count: number; active: boolean }) {
+  // Sólo aparece después de 800ms para no parpadear si el pipeline va rápido.
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    if (!active || count === 0) {
+      setShow(false);
+      return;
+    }
+    const t = window.setTimeout(() => setShow(true), 800);
+    return () => window.clearTimeout(t);
+  }, [count, active]);
+
+  return (
+    <AnimatePresence>
+      {show && count > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2 }}
+          className="shrink-0 mx-3 sm:mx-6 mt-3 inline-flex self-start items-center gap-2.5 rounded-full border border-[color:var(--border)] bg-bg-1 px-3 py-1.5 text-[12px] text-fg-2 shadow-[var(--shadow-card)]"
+          role="status"
+          aria-live="polite"
+        >
+          <span className="relative inline-flex">
+            <span className="h-2 w-2 rounded-full bg-brand-2" />
+            <span className="absolute inset-0 rounded-full bg-brand-2 animate-ping opacity-75" />
+          </span>
+          <span>
+            Tex está pensando
+            {count > 1 && <span className="text-fg-4 ml-1">({count})</span>}
+            <span className="thinking-dots" aria-hidden>
+              <span>.</span>
+              <span>.</span>
+              <span>.</span>
+            </span>
+          </span>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function NoProviderEmpty() {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-10">
+      <TexMascot variant="default" size="xl" popIn idle priority />
+      <h2 className="text-2xl font-bold tracking-tight mt-6 mb-2 max-w-md">
+        Conectá un modelo y empiezo a proponerte respuestas.
+      </h2>
+      <p className="text-fg-3 text-sm max-w-md mb-5">
+        Sin un modelo de IA conectado no puedo redactar nada. Es un solo paso desde Ajustes.
+      </p>
+      <Link href="/ajustes?tab=ia">
+        <Button className="gap-2">
+          <Plug className="h-4 w-4" /> Conectar un modelo
+        </Button>
+      </Link>
+      <div className="mt-5 inline-flex items-center gap-2 text-[11px] text-fg-3 rounded-full border border-[color:var(--border)] bg-bg-2 px-3 py-1.5">
+        <BrainCircuit className="h-3.5 w-3.5 text-brand-2" />
+        Recomendado: Vercel AI Gateway — un solo key, muchos modelos.
+      </div>
+    </div>
+  );
+}
+
 function AutosendsFeed({
   items,
-  orgId,
   onFlag,
 }: {
   items: Autosent[];
-  orgId: string;
   onFlag: (id: string) => void;
 }) {
   const [isPending, start] = useTransition();

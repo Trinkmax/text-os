@@ -27,6 +27,13 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Kbd } from "@/components/ui/kbd";
 
+export type GroundingCard = {
+  id: string;
+  topic: string;
+  question: string;
+  answer: string;
+};
+
 export type Card = {
   id: string;
   proposedText: string;
@@ -39,6 +46,7 @@ export type Card = {
   contactName: string;
   contactAvatar: string | null;
   inboundMessage: string;
+  groundingCards?: GroundingCard[];
 };
 
 export function SwipeCard({
@@ -52,6 +60,7 @@ export function SwipeCard({
   onCancelEdit,
   onStartEdit,
   onResolve,
+  onShowGrounding,
 }: {
   card: Card;
   index: number;
@@ -63,6 +72,7 @@ export function SwipeCard({
   onCancelEdit: () => void;
   onStartEdit: () => void;
   onResolve: (action: "send" | "dismiss" | "escalate" | "snooze", editedText?: string, learn?: boolean) => void;
+  onShowGrounding?: (card: GroundingCard) => void;
 }) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
@@ -203,6 +213,7 @@ export function SwipeCard({
           if (!replyText.trim()) return;
           fly("right", () => onResolve("send", replyText, false));
         }}
+        onShowGrounding={onShowGrounding}
       />
       {/* Direction indicators */}
       <DirectionHints x={x} y={y} />
@@ -275,6 +286,7 @@ function CardFace({
   onToggleLearn,
   onScopeSubmit,
   onScopeSubmitWithoutLearn,
+  onShowGrounding,
   dimmed,
 }: {
   card: Card;
@@ -291,6 +303,7 @@ function CardFace({
   onToggleLearn?: (v: boolean) => void;
   onScopeSubmit?: () => void;
   onScopeSubmitWithoutLearn?: () => void;
+  onShowGrounding?: (card: GroundingCard) => void;
   dimmed?: boolean;
 }) {
   const m = SEMAPHORE_META[card.semaphore];
@@ -398,6 +411,21 @@ function CardFace({
                 {m.label} · <span className="font-mono tabular-nums">{pct}%</span>
               </div>
               {card.reason && <div className="text-xs text-fg-3 leading-relaxed">{card.reason}</div>}
+              {card.groundingCards && card.groundingCards.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 justify-end">
+                  {card.groundingCards.slice(0, 4).map((g) => (
+                    <button
+                      key={g.id}
+                      onClick={() => onShowGrounding?.(g)}
+                      className="inline-flex items-center gap-1 max-w-[180px] px-2 h-6 rounded-full bg-bg-2 border border-[color:var(--border)] hover:border-brand-2/50 hover:bg-[rgba(139,92,246,0.05)] text-[11px] text-fg-2 transition group"
+                      title={`Basado en: ${g.question}`}
+                    >
+                      <span className="h-1 w-1 rounded-full bg-brand-2 shrink-0" />
+                      <span className="truncate">{g.topic}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )
         ) : (

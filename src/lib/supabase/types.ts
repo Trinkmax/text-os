@@ -133,11 +133,107 @@ type _Tables = {
           origin: "onboarding" | "learned" | "manual";
           usage_count: number;
           needs_review: boolean;
+          embedding_state: "fresh" | "stale" | "indexing" | "failed" | "no_provider";
+          embedding_model: string | null;
+          embedding_provider_id: string | null;
+          embedding_dim: number | null;
+          embedding_updated_at: string | null;
+          embedding_error: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["textos_knowledge_cards"]["Row"]> & { org_id: string; topic: string; question: string; answer: string };
         Update: Partial<Database["public"]["Tables"]["textos_knowledge_cards"]["Row"]>;
+      };
+      textos_kcard_chunks: {
+        Row: {
+          id: string;
+          org_id: string;
+          card_id: string;
+          chunk_idx: number;
+          text: string;
+          embedding: number[] | null;
+          dim: number | null;
+          token_count: number | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["textos_kcard_chunks"]["Row"]> & {
+          org_id: string;
+          card_id: string;
+          text: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["textos_kcard_chunks"]["Row"]>;
+      };
+      textos_ai_traces: {
+        Row: {
+          id: string;
+          org_id: string;
+          run_id: string | null;
+          suggestion_id: string | null;
+          kind: "embed" | "classify" | "generate" | "ground" | "retrieve" | "rerank";
+          provider_id: string | null;
+          provider: string | null;
+          model: string | null;
+          latency_ms: number | null;
+          input_tokens: number | null;
+          output_tokens: number | null;
+          cost_usd: number;
+          error: string | null;
+          created_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["textos_ai_traces"]["Row"]> & {
+          org_id: string;
+          kind: "embed" | "classify" | "generate" | "ground" | "retrieve" | "rerank";
+        };
+        Update: Partial<Database["public"]["Tables"]["textos_ai_traces"]["Row"]>;
+      };
+      textos_ai_runs: {
+        Row: {
+          id: string;
+          org_id: string;
+          message_id: string;
+          suggestion_id: string | null;
+          started_at: string;
+          ended_at: string | null;
+          status: "running" | "done" | "failed" | "skipped";
+          semaphore: "green" | "amber" | "red" | null;
+          confidence: number | null;
+          factors: Json | null;
+          reason: string | null;
+          error: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["textos_ai_runs"]["Row"]> & {
+          org_id: string;
+          message_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["textos_ai_runs"]["Row"]>;
+      };
+      textos_message_processing: {
+        Row: {
+          message_id: string;
+          org_id: string;
+          claimed_at: string;
+          completed_at: string | null;
+          status: "claimed" | "done" | "failed" | "skipped";
+          reason: string | null;
+        };
+        Insert: Partial<Database["public"]["Tables"]["textos_message_processing"]["Row"]> & {
+          message_id: string;
+          org_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["textos_message_processing"]["Row"]>;
+      };
+      textos_ai_rate_state: {
+        Row: {
+          org_id: string;
+          window_started_at: string;
+          count: number;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["textos_ai_rate_state"]["Row"]> & {
+          org_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["textos_ai_rate_state"]["Row"]>;
       };
       textos_scope_gaps: {
         Row: {
