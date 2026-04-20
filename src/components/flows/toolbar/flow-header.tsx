@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
-import { ArrowLeft, Check, ChevronDown, PenLine, Power, PowerOff } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, PenLine, Play, Power, PowerOff } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import {
@@ -17,21 +17,30 @@ import { Button } from "@/components/ui/button";
 import { renameFlow, setFlowActive } from "@/app/actions/flows";
 import { useFlowStore } from "../state/use-flow-store";
 import { SaveIndicator } from "./save-indicator";
+import { PublishButton, type FlowVersion } from "./publish-button";
+import { ValidationBadge } from "../validation/validation-badge";
 
 export function FlowHeader({
   active,
   published,
   allFlows,
+  versions,
+  publishedVersionId,
 }: {
   active: boolean;
   published: boolean;
   allFlows: Array<{ id: string; name: string; active: boolean }>;
+  versions: FlowVersion[];
+  publishedVersionId: string | null;
 }) {
   const router = useRouter();
   const flowId = useFlowStore((s) => s.flowId);
   const flowName = useFlowStore((s) => s.flowName);
   const sync = useFlowStore((s) => s.sync);
   const dirty = useFlowStore((s) => s.dirty);
+  const simulatorOpen = useFlowStore((s) => s.simulatorOpen);
+  const openSimulator = useFlowStore((s) => s.openSimulator);
+  const nodeCount = useFlowStore((s) => s.nodes.length);
 
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(flowName);
@@ -155,6 +164,7 @@ export function FlowHeader({
 
       <div className="hidden md:flex items-center gap-1.5 ml-2">
         <SaveIndicator status={sync} dirty={dirty} />
+        <ValidationBadge />
         {active && (
           <span className="inline-flex items-center gap-1 text-[11px] font-medium text-brand-2 bg-brand/10 border border-brand/25 rounded-full px-2 py-1">
             <span className="h-1.5 w-1.5 rounded-full bg-brand-2 shadow-[0_0_8px_var(--brand-2)] animate-pulse" />
@@ -165,24 +175,37 @@ export function FlowHeader({
 
       <div className="flex-1" />
 
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={onToggleActive}
-        disabled={isPending || !published}
-        title={!published ? "Publicá el flujo antes de activarlo" : undefined}
-        className="hidden sm:inline-flex"
-      >
-        {active ? (
-          <>
-            <PowerOff className="h-3.5 w-3.5" /> Pausar
-          </>
-        ) : (
-          <>
-            <Power className="h-3.5 w-3.5" /> Activar
-          </>
-        )}
-      </Button>
+      <div className="flex items-center gap-1.5">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onToggleActive}
+          disabled={isPending || !published}
+          title={!published ? "Publicá el flujo antes de activarlo" : undefined}
+          className="hidden lg:inline-flex"
+        >
+          {active ? (
+            <>
+              <PowerOff className="h-3.5 w-3.5" /> Pausar
+            </>
+          ) : (
+            <>
+              <Power className="h-3.5 w-3.5" /> Activar
+            </>
+          )}
+        </Button>
+        <Button
+          variant={simulatorOpen ? "secondary" : "outline"}
+          size="sm"
+          className="gap-1.5"
+          onClick={() => openSimulator(!simulatorOpen)}
+          disabled={nodeCount === 0}
+        >
+          <Play className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">{simulatorOpen ? "Cerrar" : "Probar"}</span>
+        </Button>
+        <PublishButton versions={versions} publishedVersionId={publishedVersionId} />
+      </div>
     </header>
   );
 }

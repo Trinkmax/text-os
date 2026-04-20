@@ -73,7 +73,7 @@ export function NewFlowForm() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
       <header className="px-4 md:px-6 py-3 md:py-4 border-b border-[color:var(--border)] flex items-center gap-3">
         <Link href="/flujos" className="text-fg-3 hover:text-fg transition-colors">
           <ArrowLeft className="h-5 w-5" />

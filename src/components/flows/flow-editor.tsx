@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Plus, Play } from "lucide-react";
+import { Plus } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -11,17 +12,15 @@ import {
 } from "@/components/ui/sheet";
 import { FlowCanvas } from "./canvas/flow-canvas";
 import { FlowHeader } from "./toolbar/flow-header";
-import { PublishButton } from "./toolbar/publish-button";
-import { SaveIndicator } from "./toolbar/save-indicator";
 import { NodePalette } from "./palette/node-palette";
 import { NodeInspector } from "./inspector/node-inspector";
 import { FlowSimulator } from "./simulator/flow-simulator";
-import { ValidationBadge } from "./validation/validation-badge";
 import { FlowsOnboarding } from "./onboarding/flows-onboarding";
 import { FlowsCommandPalette } from "./command-palette-flows";
 import { useFlowStore } from "./state/use-flow-store";
 import { useAutosave } from "./state/use-autosave";
 import { useFlowKeyboard } from "./state/use-keyboard";
+import { useIsTablet } from "@/lib/use-media";
 import type { FlowGraph, NodeType } from "./types/flow";
 import type { FlowVersion } from "./toolbar/publish-button";
 
@@ -40,10 +39,8 @@ type FlowEditorProps = {
   allFlows: Array<{ id: string; name: string; active: boolean }>;
 };
 
-export function FlowEditor({ flow, versions, allFlows }: FlowEditorProps) {
-  return (
-    <FlowEditorInner flow={flow} versions={versions} allFlows={allFlows} />
-  );
+export function FlowEditor(props: FlowEditorProps) {
+  return <FlowEditorInner {...props} />;
 }
 
 function FlowEditorInner({ flow, versions, allFlows }: FlowEditorProps) {
@@ -52,15 +49,17 @@ function FlowEditorInner({ flow, versions, allFlows }: FlowEditorProps) {
   const simulatorOpen = useFlowStore((s) => s.simulatorOpen);
   const openSimulator = useFlowStore((s) => s.openSimulator);
   const addNode = useFlowStore((s) => s.addNode);
-  const sync = useFlowStore((s) => s.sync);
-  const dirty = useFlowStore((s) => s.dirty);
-  const nodes = useFlowStore((s) => s.nodes);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
 
-  // Hidratamos el store con los datos cargados en Server Component.
-  // Re-init cuando cambia el flowId (switchear entre flujos sin refresh).
+  // Breakpoint guard: los Sheets de mobile sólo se abren cuando realmente
+  // estamos en viewport tablet/mobile. En desktop el inspector flotante y el
+  // simulador flotante hacen su trabajo — evitamos que el overlay del Sheet
+  // (bg-black/70) oscurezca toda la pantalla en desktop.
+  const isTablet = useIsTablet();
+
+  // Hidratamos el store con los datos cargados del Server Component.
   useEffect(() => {
     init({
       flowId: flow.id,
@@ -72,119 +71,126 @@ function FlowEditorInner({ flow, versions, allFlows }: FlowEditorProps) {
     });
   }, [flow.id, flow.name, flow.version, flow.publishedVersionId, flow.updatedAt, flow.graph, init]);
 
-  // Engancha autosave + atajos.
   useAutosave();
   useFlowKeyboard();
 
-  // Abrir sheet inspector automáticamente en mobile cuando se selecciona un nodo.
+  // En mobile, abrimos el sheet inspector al seleccionar un nodo.
   useEffect(() => {
     if (selectedNodeId) setInspectorOpen(true);
   }, [selectedNodeId]);
 
   function onPaletteTap(type: NodeType) {
-    // Agrega el nodo en el centro del canvas (coordenadas lógicas aproximadas).
-    addNode(type, { x: 240, y: 180 });
+    addNode(type, { x: 300, y: 220 });
     setPaletteOpen(false);
   }
 
+  const showInspector = !!selectedNodeId && !simulatorOpen;
+
   return (
-    <div className="flex flex-col h-[100dvh] md:h-[calc(100dvh-0px)] overflow-hidden">
+    <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
       <FlowHeader
         active={flow.active}
         published={!!flow.publishedVersionId}
         allFlows={allFlows}
+        versions={versions}
+        publishedVersionId={flow.publishedVersionId}
       />
 
-      {/* Sub-toolbar con validación + acciones rápidas */}
-      <div className="px-3 md:px-6 py-2 border-b border-[color:var(--border)] flex items-center gap-2 bg-bg-0 flex-shrink-0 overflow-x-auto">
-        <ValidationBadge />
-        <div className="md:hidden">
-          <SaveIndicator status={sync} dirty={dirty} />
-        </div>
-        <div className="flex-1" />
-        <Button
-          variant="secondary"
-          size="sm"
-          className="md:hidden gap-1.5"
-          onClick={() => setPaletteOpen(true)}
-          aria-label="Agregar nodo"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          <span>Nodo</span>
-        </Button>
-        <Button
-          variant={simulatorOpen ? "secondary" : "outline"}
-          size="sm"
-          className="gap-1.5"
-          onClick={() => openSimulator(!simulatorOpen)}
-          disabled={nodes.length === 0}
-        >
-          <Play className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">{simulatorOpen ? "Cerrar" : "Probar"}</span>
-        </Button>
-        <PublishButton versions={versions} publishedVersionId={flow.publishedVersionId} />
-      </div>
-
-      {/* Main body: palette | canvas | (inspector o simulator) */}
+      {/* Main body: palette rail (desktop) | canvas full width | overlays */}
       <div className="flex-1 flex min-h-0 relative">
-        {/* Palette: desktop inline */}
-        <div className="hidden md:block">
+        {/* Palette rail: desktop inline colapsable */}
+        <div className="hidden md:flex">
           <NodePalette onTap={onPaletteTap} />
         </div>
 
-        {/* Canvas + overlays contextuales */}
-        <FlowCanvas />
-        <FlowsOnboarding />
-        <FlowsCommandPalette />
+        {/* Canvas ocupa TODO el resto */}
+        <div className="flex-1 min-w-0 relative">
+          <FlowCanvas />
+          <FlowsOnboarding />
+          <FlowsCommandPalette />
 
-        {/* Right rail: inspector (default) o simulator */}
-        <div className="hidden lg:block">
-          {simulatorOpen ? (
-            <aside className="w-[360px] border-l border-[color:var(--border)]">
-              <FlowSimulator onClose={() => openSimulator(false)} />
-            </aside>
-          ) : (
-            <NodeInspector mode="sidebar" />
-          )}
+          {/* Mobile: FAB para abrir palette */}
+          <Button
+            variant="primary"
+            size="icon"
+            className="md:hidden absolute bottom-4 right-4 z-10 rounded-full h-12 w-12 shadow-[var(--shadow-hover)]"
+            onClick={() => setPaletteOpen(true)}
+            aria-label="Agregar nodo"
+          >
+            <Plus className="h-5 w-5" />
+          </Button>
         </div>
+
+        {/* Inspector overlay — flotante a la derecha, NO ocupa espacio del layout */}
+        <AnimatePresence>
+          {showInspector && (
+            <motion.aside
+              initial={{ x: 380, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 380, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 340, damping: 32 }}
+              className="hidden lg:flex absolute top-3 right-3 bottom-3 w-[340px] z-20 rounded-2xl border border-[color:var(--border)] bg-bg-1/92 backdrop-blur-md shadow-[var(--shadow-hover)] overflow-hidden"
+            >
+              <NodeInspector mode="overlay" />
+            </motion.aside>
+          )}
+        </AnimatePresence>
+
+        {/* Simulator overlay — también flotante, pisa al inspector cuando está abierto */}
+        <AnimatePresence>
+          {simulatorOpen && (
+            <motion.aside
+              initial={{ x: 400, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: 400, opacity: 0 }}
+              transition={{ type: "spring", stiffness: 340, damping: 32 }}
+              className="hidden lg:flex absolute top-3 right-3 bottom-3 w-[380px] z-30 rounded-2xl border border-[color:var(--border)] bg-bg-1/95 backdrop-blur-md shadow-[var(--shadow-hover)] overflow-hidden"
+            >
+              <FlowSimulator onClose={() => openSimulator(false)} />
+            </motion.aside>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Mobile sheets */}
-      <Sheet open={paletteOpen} onOpenChange={setPaletteOpen}>
-        <SheetContent side="bottom" className="md:hidden p-0 max-h-[70dvh]">
-          <SheetHeader>
-            <SheetTitle>Agregar nodo</SheetTitle>
-          </SheetHeader>
-          <NodePalette onTap={onPaletteTap} variant="sheet" />
-        </SheetContent>
-      </Sheet>
+      {/* Mobile sheets — solo se montan realmente en viewport tablet/mobile.
+          En desktop el overlay flotante hace su trabajo y NO queremos que el
+          overlay del Sheet (bg-black/70) oscurezca la pantalla. */}
+      {isTablet && (
+        <>
+          <Sheet open={paletteOpen} onOpenChange={setPaletteOpen}>
+            <SheetContent side="bottom" className="p-0 max-h-[70dvh]">
+              <SheetHeader>
+                <SheetTitle>Agregar nodo</SheetTitle>
+              </SheetHeader>
+              <NodePalette onTap={onPaletteTap} variant="sheet" />
+            </SheetContent>
+          </Sheet>
 
-      <Sheet
-        open={inspectorOpen && !!selectedNodeId}
-        onOpenChange={(v) => {
-          setInspectorOpen(v);
-          if (!v) {
-            // deselect al cerrar para que no reabra al pisar otro nodo.
-            useFlowStore.getState().selectNode(null);
-          }
-        }}
-      >
-        <SheetContent side="bottom" className="lg:hidden p-0 max-h-[85dvh] flex flex-col">
-          <SheetHeader className="sr-only">
-            <SheetTitle>Configurar nodo</SheetTitle>
-          </SheetHeader>
-          <NodeInspector mode="sheet" />
-        </SheetContent>
-      </Sheet>
+          <Sheet
+            open={inspectorOpen && !!selectedNodeId}
+            onOpenChange={(v) => {
+              setInspectorOpen(v);
+              if (!v) useFlowStore.getState().selectNode(null);
+            }}
+          >
+            <SheetContent side="bottom" className="p-0 max-h-[85dvh] flex flex-col">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Configurar nodo</SheetTitle>
+              </SheetHeader>
+              <NodeInspector mode="sheet" />
+            </SheetContent>
+          </Sheet>
 
-      <Sheet open={simulatorOpen} onOpenChange={openSimulator}>
-        <SheetContent side="bottom" className="lg:hidden p-0 h-[85dvh]">
-          <SheetHeader className="sr-only">
-            <SheetTitle>Simulador</SheetTitle>
-          </SheetHeader>
-          <FlowSimulator onClose={() => openSimulator(false)} noHeader />
-        </SheetContent>
-      </Sheet>
+          <Sheet open={simulatorOpen} onOpenChange={openSimulator}>
+            <SheetContent side="bottom" className="p-0 h-[85dvh]">
+              <SheetHeader className="sr-only">
+                <SheetTitle>Simulador</SheetTitle>
+              </SheetHeader>
+              <FlowSimulator onClose={() => openSimulator(false)} noHeader />
+            </SheetContent>
+          </Sheet>
+        </>
+      )}
     </div>
   );
 }

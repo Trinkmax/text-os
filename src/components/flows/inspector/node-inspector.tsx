@@ -1,6 +1,6 @@
 "use client";
 
-import { Info, Settings2, Trash2, Copy as CopyIcon } from "lucide-react";
+import { Info, Settings2, Trash2, Copy as CopyIcon, X } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { NodeLogicForm } from "./forms/logic-form";
 import { NodeDataForm } from "./forms/data-form";
 import { NodeAdvancedForm } from "./forms/advanced-form";
 
-export function NodeInspector({ mode = "sidebar" }: { mode?: "sidebar" | "sheet" }) {
+export function NodeInspector({ mode = "sidebar" }: { mode?: "sidebar" | "sheet" | "overlay" }) {
   const node = useFlowStore((s) => {
     const id = s.selectedNodeId;
     return id ? s.nodes.find((n) => n.id === id) ?? null : null;
@@ -21,10 +21,17 @@ export function NodeInspector({ mode = "sidebar" }: { mode?: "sidebar" | "sheet"
   const updateNode = useFlowStore((s) => s.updateNode);
   const deleteNode = useFlowStore((s) => s.deleteNode);
   const duplicateNode = useFlowStore((s) => s.duplicateNode);
+  const selectNode = useFlowStore((s) => s.selectNode);
 
   if (!node) {
     return (
-      <div className={cn(mode === "sidebar" && "w-[340px] border-l border-[color:var(--border)] bg-bg-1")}>
+      <div
+        className={cn(
+          "flex flex-col h-full overflow-hidden",
+          mode === "sidebar" && "w-[340px] border-l border-[color:var(--border)] bg-bg-1",
+          mode === "overlay" && "w-full",
+        )}
+      >
         <EmptyInspector />
       </div>
     );
@@ -38,6 +45,7 @@ export function NodeInspector({ mode = "sidebar" }: { mode?: "sidebar" | "sheet"
       className={cn(
         "flex flex-col h-full overflow-hidden",
         mode === "sidebar" && "w-[340px] border-l border-[color:var(--border)] bg-bg-1",
+        mode === "overlay" && "w-full",
       )}
     >
       {/* Header */}
@@ -49,7 +57,17 @@ export function NodeInspector({ mode = "sidebar" }: { mode?: "sidebar" | "sheet"
           <div className="text-[10px] uppercase tracking-wider text-fg-4 font-medium">
             {entry.shortLabel}
           </div>
-          <span className={cn("ml-auto h-1.5 w-1.5 rounded-full", `dot-${node.semaphore}`)} />
+          <span className={cn("h-1.5 w-1.5 rounded-full", `dot-${node.semaphore}`)} />
+          {mode === "overlay" && (
+            <button
+              type="button"
+              onClick={() => selectNode(null)}
+              className="ml-auto h-7 w-7 flex items-center justify-center rounded-lg text-fg-4 hover:text-fg hover:bg-bg-2 transition-colors"
+              aria-label="Cerrar inspector"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
         <Input
           value={node.title}

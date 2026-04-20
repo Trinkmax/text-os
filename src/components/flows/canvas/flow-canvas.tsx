@@ -17,7 +17,6 @@ import { NODE_COMPONENTS } from "./node-types";
 import { EDGE_COMPONENTS } from "./edge-types";
 import { useFlowStore } from "../state/use-flow-store";
 import type { NodeType } from "../types/flow";
-import { CanvasBackground } from "./canvas-background";
 import { CanvasControls } from "./canvas-controls";
 import { CanvasMinimap } from "./canvas-minimap";
 
@@ -94,12 +93,12 @@ function FlowCanvasInner() {
   return (
     <div
       ref={wrapperRef}
-      className="flows-canvas-wrap relative flex-1 min-h-0"
+      className="flows-canvas-wrap relative h-full w-full"
       onDrop={onDrop}
       onDragOver={onDragOver}
     >
-      <CanvasBackground />
       <ReactFlow
+        colorMode="dark"
         nodes={rfNodes}
         edges={rfEdges}
         onNodesChange={onNodesChange}
@@ -112,8 +111,9 @@ function FlowCanvasInner() {
         isValidConnection={isValidConnection as never}
         connectionRadius={32}
         selectionOnDrag
-        panOnDrag={[1, 2]} // middle/right button to pan
+        panOnDrag={[0, 1, 2]} /* left/middle/right — permite pan con left-drag */
         selectionMode={"partial" as never}
+        selectionKeyCode={"Shift"}
         multiSelectionKeyCode={["Meta", "Shift"]}
         deleteKeyCode={null /* lo manejamos en use-keyboard */}
         zoomOnScroll
@@ -129,7 +129,13 @@ function FlowCanvasInner() {
         }}
         className="touch-none"
       >
-        <Background variant={BackgroundVariant.Dots} gap={18} size={1} color="rgba(255,255,255,0.05)" />
+        <Background
+          variant={BackgroundVariant.Dots}
+          gap={22}
+          size={1.1}
+          color="rgba(255,255,255,0.055)"
+          bgColor="transparent"
+        />
       </ReactFlow>
 
       {/* Overlays */}

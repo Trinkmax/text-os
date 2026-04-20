@@ -32,7 +32,7 @@ export type FlowListItem = {
 
 export function FlowsList({ flows }: { flows: FlowListItem[] }) {
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
       <header className="px-4 md:px-6 py-3 md:py-4 border-b border-[color:var(--border)] flex items-center gap-3">
         <div>
           <h1 className="text-xl md:text-2xl font-bold tracking-tight">Flujos</h1>

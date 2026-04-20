@@ -1,17 +1,75 @@
 /* Estilos scoped al editor de Flujos. Importado en `flow-canvas.tsx`. */
 
-/* Tema dark del canvas de xyflow. Usamos variables CSS del proyecto. */
+/* ==================== Dark theme del canvas ==========================
+   xyflow v12 expone CSS variables con prefijo --xy-. Las sobreescribimos
+   para que el canvas respete el design system dark del resto de la app. */
+/* Wrapper: dark con gradient radial sutil. */
+.flows-canvas-wrap {
+  background: var(--bg-0);
+  background-image:
+    radial-gradient(ellipse at 20% 10%, rgba(139, 92, 246, 0.06) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 90%, rgba(16, 185, 129, 0.04) 0%, transparent 50%);
+}
+
 .flows-canvas-wrap .react-flow {
+  --xy-background-color: transparent;
+  --xy-background-color-default: transparent;
+  --xy-background-pattern-color: rgba(255, 255, 255, 0.05);
+  --xy-edge-stroke-default: rgba(167, 139, 250, 0.55);
+  --xy-edge-stroke-selected-default: var(--brand-2);
+  --xy-edge-stroke-width-default: 1.5;
+  --xy-connectionline-stroke-default: var(--brand-2);
+  --xy-connectionline-stroke-width-default: 2;
+  --xy-handle-background-color-default: var(--bg-1);
+  --xy-handle-border-color-default: var(--brand-2);
+  --xy-selection-background-color-default: rgba(139, 92, 246, 0.1);
+  --xy-selection-border-default: 1.5px solid var(--brand-2);
+  --xy-node-background-color-default: transparent;
+  --xy-node-border-default: 0;
+  --xy-node-boxshadow-default: none;
+  --xy-node-color-default: var(--fg);
+  --xy-minimap-background-color-default: var(--bg-1);
+  --xy-minimap-mask-background-color-default: rgba(9, 9, 11, 0.68);
+  --xy-minimap-mask-stroke-color-default: var(--brand-2);
+  --xy-minimap-mask-stroke-width-default: 1;
+  --xy-minimap-node-background-color-default: var(--bg-3);
+  --xy-minimap-node-stroke-color-default: var(--brand-2);
+  --xy-attribution-background-color-default: transparent;
+  --xy-controls-button-background-color-default: var(--bg-1);
+  --xy-controls-button-background-color-hover-default: var(--bg-2);
+  --xy-controls-button-color-default: var(--fg-2);
+  --xy-controls-button-border-color-default: var(--border);
+  --xy-resize-background-color-default: var(--brand-2);
+
   background: var(--bg-0);
 }
 
+/* Force transparent para ver el wrapper radial detrás. */
+.flows-canvas-wrap .react-flow__pane {
+  background: transparent;
+}
+
 .flows-canvas-wrap .react-flow__background {
-  background-color: transparent;
+  background: transparent;
+}
+
+/* xyflow pinta un rect blanco bajo el viewport si no hay un pattern. Forzamos. */
+.flows-canvas-wrap .react-flow__renderer,
+.flows-canvas-wrap .react-flow__viewport {
+  background: transparent;
+}
+
+/* Los nodos xyflow envuelven nuestro BaseNode. Quitamos el default white. */
+.flows-canvas-wrap .react-flow__node {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: var(--fg);
 }
 
 /* Handles: ocultos por defecto, se ven al hover sobre el nodo o al conectar. */
 .flows-canvas-wrap .flow-node-handle {
-  opacity: 0.35;
+  opacity: 0.4;
   transition:
     opacity 150ms ease,
     transform 150ms ease,
@@ -23,12 +81,12 @@
 .flows-canvas-wrap .flow-node-handle.connectingfrom,
 .flows-canvas-wrap .flow-node-handle.connectingto {
   opacity: 1;
-  transform: scale(1.15);
+  transform: scale(1.18);
 }
 
 .flows-canvas-wrap .react-flow__handle.connecting {
   opacity: 1 !important;
-  transform: scale(1.25);
+  transform: scale(1.28);
 }
 
 /* Connection line (mientras arrastrás para conectar). */
@@ -37,6 +95,7 @@
   stroke-width: 2;
   stroke-dasharray: 6 4;
   animation: flow-dash-march 0.8s linear infinite;
+  filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.45));
 }
 
 /* Animación de marcha para edges "en ejecución". */
@@ -52,13 +111,19 @@
   display: none !important;
 }
 
-/* Minimapa: tuneos finos. */
+/* Minimapa: glass effect sutil. */
 .flows-canvas-wrap .react-flow__minimap {
+  background: color-mix(in oklch, var(--bg-1) 80%, transparent) !important;
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
   box-shadow: var(--shadow-card);
+  border: 1px solid var(--border) !important;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
 .flows-canvas-wrap .react-flow__minimap-node {
-  fill-opacity: 0.85;
+  fill-opacity: 0.7;
 }
 
 /* Selection box */
@@ -76,4 +141,33 @@
 /* Edge interaction hitbox más generoso */
 .flows-canvas-wrap .react-flow__edge-interaction {
   stroke-width: 24;
+}
+
+/* ==================== Rail de palette compacto ==================== */
+.flow-palette-rail-item {
+  transition:
+    transform 180ms cubic-bezier(0.34, 1.56, 0.64, 1),
+    background 150ms ease,
+    border-color 150ms ease;
+}
+.flow-palette-rail-item:hover {
+  transform: translateX(2px) scale(1.04);
+}
+.flow-palette-rail-item:active {
+  transform: translateX(2px) scale(0.96);
+}
+
+/* ==================== Inspector overlay animation ==================== */
+@keyframes inspector-slide-in {
+  from {
+    transform: translateX(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.inspector-overlay {
+  animation: inspector-slide-in 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
