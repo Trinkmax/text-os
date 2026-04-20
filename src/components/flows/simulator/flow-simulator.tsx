@@ -30,16 +30,25 @@ export function FlowSimulator({ onClose, noHeader }: { onClose: () => void; noHe
   const [isInitializing, setInitializing] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
-
+  // Ref espejo de runId para que el cleanup pueda llamar endSimRun con el
+  // valor actualizado (un useEffect con deps `[]` solo ve la closure inicial).
+  const runIdRef = useRef<string | null>(null);
   useEffect(() => {
-    // Arrancar una nueva run al montarse.
+    runIdRef.current = runId;
+  }, [runId]);
+
+  // Arrancamos la run cuando tenemos flowId. Si flowId aún no está hidratado
+  // por el store al montar, esperamos a que llegue (no llamamos startSimRun
+  // con "" — eso devolvía "Flujo no encontrado" en producción).
+  useEffect(() => {
+    if (!flowId) return;
     void initRun();
     return () => {
-      // Cerrar la run al desmontar (best-effort).
-      if (runId) void endSimRun(runId);
+      const rid = runIdRef.current;
+      if (rid) void endSimRun(rid);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [flowId]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -48,6 +57,7 @@ export function FlowSimulator({ onClose, noHeader }: { onClose: () => void; noHe
   }, [msgs]);
 
   async function initRun() {
+    if (!flowId) return;
     setInitializing(true);
     setMsgs([
       {
@@ -67,6 +77,14 @@ export function FlowSimulator({ onClose, noHeader }: { onClose: () => void; noHe
       }, 100);
     } else {
       toast.error(res.error);
+      setMsgs((m) => [
+        ...m,
+        {
+          from: "system",
+          text: `No se pudo iniciar la simulación: ${res.error}`,
+          at: new Date().toISOString(),
+        },
+      ]);
     }
     setInitializing(false);
   }
@@ -84,9 +102,16 @@ export function FlowSimulator({ onClose, noHeader }: { onClose: () => void; noHe
             nodeId: res.currentNodeId,
           },
         ]);
+      } else if (res.note) {
+        setMsgs((m) => [
+          ...m,
+          { from: "system", text: res.note!, at: new Date().toISOString() },
+        ]);
       }
       setCurrentNodeId(res.currentNodeId);
       setVariables(res.variables);
+    } else {
+      toast.error(res.error);
     }
   }
 
@@ -115,11 +140,30 @@ export function FlowSimulator({ onClose, noHeader }: { onClose: () => void; noHe
             ...m,
             { from: "system", text: res.note!, at: new Date().toISOString() },
           ]);
+        } else {
+          // Sin reply y sin note: el motor no devolvió nada accionable.
+          // Mostramos feedback para que el mensaje del usuario no caiga al vacío.
+          setMsgs((m) => [
+            ...m,
+            {
+              from: "system",
+              text: "El flujo no produjo respuesta para este mensaje.",
+              at: new Date().toISOString(),
+            },
+          ]);
         }
         setCurrentNodeId(res.currentNodeId);
         setVariables(res.variables);
       } else {
         toast.error(res.error);
+        setMsgs((m) => [
+          ...m,
+          {
+            from: "system",
+            text: `Error: ${res.error}`,
+            at: new Date().toISOString(),
+          },
+        ]);
       }
     });
   }

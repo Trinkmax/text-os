@@ -250,16 +250,22 @@ async function processNode(
 
     case "condition": {
       const branch = pickConditionBranch(node, input, variables);
-      const edge = graph.edges.find(
-        (e) => e.from === node.id && (e.sourceHandle === branch?.id || (!e.sourceHandle && !branch)),
-      );
+      // Buscamos el edge de la rama seleccionada. Si no hay match exacto por
+      // sourceHandle, caemos al primer edge sin sourceHandle (rama "else"
+      // implícita) y como último recurso a CUALQUIER edge saliente — esto
+      // evita que el flujo se quede mudo cuando la condición está mal cableada.
+      const outEdges = graph.edges.filter((e) => e.from === node.id);
+      const edge =
+        (branch && outEdges.find((e) => e.sourceHandle === branch.id)) ||
+        outEdges.find((e) => !e.sourceHandle) ||
+        outEdges[0];
       if (!edge) {
         return {
           reply: null,
           currentNodeId: node.id,
           variables,
           semaphore: "amber",
-          note: "La rama seleccionada no tiene edge conectado.",
+          note: "El nodo de condición no tiene salidas conectadas.",
         };
       }
       const nextNode = graph.nodes.find((n) => n.id === edge.to);
