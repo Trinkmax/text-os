@@ -20,6 +20,7 @@ import { evaluateBusinessHours } from "./business-hours";
 import { claimMessage, releaseMessage } from "./run-once";
 import { checkAndIncrementRate } from "./trace";
 import { reasonFromError } from "./errors";
+import { advanceFlow, loadActiveFlowGraph } from "@/lib/flows/engine";
 import type { RunCtx } from "./types";
 
 type Org = Row<"textos_orgs">;
@@ -133,6 +134,80 @@ async function runInner(input: PipelineInput, ctx: RunCtx): Promise<void> {
     });
     await releaseMessage(input.messageId, "done");
     return;
+  }
+
+  // 7.5. Motor de Flujos (opcional): si la org tiene un flujo activo publicado
+  //      y la conversación ya está adentro de ese flujo (current_flow_node !== null),
+  //      dejamos que el motor decida la próxima respuesta. Si el motor entrega
+  //      una `reply` directa (saludo, cerrar, derivar, etc.), saltamos retrieve+LLM.
+  //      Para nodos FAQ el motor NO da reply — sigue el pipeline normal.
+  try {
+    const activeFlow = await loadActiveFlowGraph({ sb, orgId: input.orgId });
+    if (activeFlow) {
+      const { data: conv } = await sb
+        .from("textos_conversations")
+        .select("current_flow_node")
+        .eq("id", input.conversationId)
+        .eq("org_id", input.orgId)
+        .single();
+      // Entramos al flujo si la conv estaba adentro (current_flow_node !== null) o
+      // si es el primer mensaje y el flujo tiene un nodo de inicio (arrancamos).
+      const shouldEnter = conv?.current_flow_node !== null || activeFlow.graph.nodes.some((n) => n.type === "start");
+      if (shouldEnter) {
+        const engineResult = await advanceFlow({
+          graph: activeFlow.graph,
+          orgId: input.orgId,
+          currentNodeId: conv?.current_flow_node ?? null,
+          variables: {}, // TODO: hidratar desde contacto.custom cuando hidratemos el motor.
+          userMessage: input.body,
+          intent: { label: intent.intent, confidence: intent.isGreeting ? 0.9 : 0.7 },
+        });
+
+        // Guardar el current_flow_node actualizado (o null si finished).
+        await sb
+          .from("textos_conversations")
+          .update({ current_flow_node: engineResult.finished ? null : engineResult.currentNodeId })
+          .eq("id", input.conversationId)
+          .eq("org_id", input.orgId);
+
+        if (engineResult.reply) {
+          const sug = await persistSuggestion(input, ctx, {
+            proposed_text: engineResult.reply,
+            confidence: engineResult.semaphore === "green" ? 0.9 : engineResult.semaphore === "amber" ? 0.6 : 0.3,
+            semaphore: engineResult.semaphore,
+            reason: engineResult.note ?? "Respuesta generada por el flujo activo",
+          });
+          await persistRun(ctx, {
+            status: "done",
+            semaphore: engineResult.semaphore,
+            confidence: engineResult.semaphore === "green" ? 0.9 : engineResult.semaphore === "amber" ? 0.6 : 0.3,
+            factors: {
+              flow: {
+                flowId: activeFlow.flowId,
+                version: activeFlow.version,
+                currentNodeId: engineResult.currentNodeId,
+                finished: engineResult.finished ?? false,
+              },
+            } as unknown as Json,
+            reason: engineResult.note ?? "Flow-managed reply",
+            suggestionId: sug?.id ?? null,
+            latencyMs: Date.now() - startedAt,
+          });
+          await releaseMessage(input.messageId, "done");
+          return;
+        }
+        // Sin reply: el motor dejó que el pipeline siga (ej: nodo FAQ).
+      }
+    }
+  } catch (err) {
+    // No rompemos el pipeline por un error del motor — lo reportamos como traza.
+    const reason = err instanceof Error ? err.message : String(err);
+    await sb.from("textos_ai_traces").insert({
+      org_id: input.orgId,
+      run_id: ctx.runId,
+      kind: "classify",
+      error: `flow_engine: ${reason}`.slice(0, 400),
+    });
   }
 
   // 8. Recuperación híbrida.

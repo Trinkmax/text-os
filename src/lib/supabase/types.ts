@@ -258,11 +258,54 @@ type _Tables = {
           active: boolean;
           nodes: Json;
           edges: Json;
+          version: number;
+          published_version_id: string | null;
+          viewport: Json;
+          archived_at: string | null;
           created_at: string;
           updated_at: string;
         };
         Insert: Partial<Database["public"]["Tables"]["textos_flows"]["Row"]> & { org_id: string; name: string };
         Update: Partial<Database["public"]["Tables"]["textos_flows"]["Row"]>;
+      };
+      textos_flow_versions: {
+        Row: {
+          id: string;
+          flow_id: string;
+          org_id: string;
+          version: number;
+          nodes: Json;
+          edges: Json;
+          viewport: Json;
+          note: string | null;
+          published_by: string | null;
+          published_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["textos_flow_versions"]["Row"]> & {
+          flow_id: string;
+          org_id: string;
+          version: number;
+        };
+        Update: Partial<Database["public"]["Tables"]["textos_flow_versions"]["Row"]>;
+      };
+      textos_flow_sim_runs: {
+        Row: {
+          id: string;
+          org_id: string;
+          flow_id: string;
+          version: number | null;
+          current_node_id: string | null;
+          variables: Json;
+          transcript: Json;
+          ended_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["textos_flow_sim_runs"]["Row"]> & {
+          org_id: string;
+          flow_id: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["textos_flow_sim_runs"]["Row"]>;
       };
       textos_campaigns: {
         Row: {

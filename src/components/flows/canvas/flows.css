@@ -1,0 +1,79 @@
+/* Estilos scoped al editor de Flujos. Importado en `flow-canvas.tsx`. */
+
+/* Tema dark del canvas de xyflow. Usamos variables CSS del proyecto. */
+.flows-canvas-wrap .react-flow {
+  background: var(--bg-0);
+}
+
+.flows-canvas-wrap .react-flow__background {
+  background-color: transparent;
+}
+
+/* Handles: ocultos por defecto, se ven al hover sobre el nodo o al conectar. */
+.flows-canvas-wrap .flow-node-handle {
+  opacity: 0.35;
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease,
+    box-shadow 150ms ease;
+  cursor: crosshair;
+}
+
+.flows-canvas-wrap .react-flow__node:hover .flow-node-handle,
+.flows-canvas-wrap .flow-node-handle.connectingfrom,
+.flows-canvas-wrap .flow-node-handle.connectingto {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+.flows-canvas-wrap .react-flow__handle.connecting {
+  opacity: 1 !important;
+  transform: scale(1.25);
+}
+
+/* Connection line (mientras arrastrás para conectar). */
+.flows-canvas-wrap .react-flow__connection-path {
+  stroke: var(--brand-2);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  animation: flow-dash-march 0.8s linear infinite;
+}
+
+/* Animación de marcha para edges "en ejecución". */
+@keyframes flow-dash-march {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+/* Controls propios del xyflow (escondidos — usamos CanvasControls custom). */
+.flows-canvas-wrap .react-flow__controls,
+.flows-canvas-wrap .react-flow__attribution {
+  display: none !important;
+}
+
+/* Minimapa: tuneos finos. */
+.flows-canvas-wrap .react-flow__minimap {
+  box-shadow: var(--shadow-card);
+}
+
+.flows-canvas-wrap .react-flow__minimap-node {
+  fill-opacity: 0.85;
+}
+
+/* Selection box */
+.flows-canvas-wrap .react-flow__selection {
+  background: rgba(139, 92, 246, 0.1);
+  border: 1.5px solid var(--brand-2);
+  border-radius: 8px;
+}
+
+/* Selector de selección en edges */
+.flows-canvas-wrap .react-flow__edge.selected .react-flow__edge-path {
+  filter: drop-shadow(0 0 6px rgba(167, 139, 250, 0.45));
+}
+
+/* Edge interaction hitbox más generoso */
+.flows-canvas-wrap .react-flow__edge-interaction {
+  stroke-width: 24;
+}
