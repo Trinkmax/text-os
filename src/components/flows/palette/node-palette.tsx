@@ -45,22 +45,33 @@ export function NodePalette({
   return (
     <motion.aside
       initial={false}
-      animate={{ width: expanded ? 224 : 64 }}
+      animate={{ width: expanded ? 228 : 72 }}
       transition={{ type: "spring", stiffness: 320, damping: 30 }}
+      // overflow-visible para que el toggle que sobresale por el borde
+      // derecho no se corte. z-30 para quedar encima del canvas.
       className={cn(
-        "relative border-r border-[color:var(--border)] bg-bg-1/80 backdrop-blur-sm flex flex-col overflow-hidden flex-shrink-0",
+        "relative border-r border-[color:var(--border)] bg-bg-1/80 backdrop-blur-sm flex flex-col flex-shrink-0 overflow-visible z-30",
       )}
     >
+      {/* Toggle flotante centrado sobre el borde derecho del aside.
+          El chevron de lucide es asimétrico (apex desplazado), así que
+          compensamos con un translate de 1px para que el ícono se vea
+          centrado dentro del círculo. */}
       <button
         type="button"
         onClick={() => setExpanded((v) => !v)}
-        className="absolute top-1/2 -right-3 -translate-y-1/2 z-10 h-6 w-6 rounded-full bg-bg-2 border border-[color:var(--border-strong)] flex items-center justify-center text-fg-3 hover:text-fg hover:bg-bg-3 transition-all shadow-[var(--shadow-card)]"
+        className="absolute top-1/2 right-0 z-40 h-7 w-7 -translate-y-1/2 translate-x-1/2 rounded-full bg-bg-2 border border-[color:var(--border-strong)] flex items-center justify-center text-fg-3 hover:text-fg hover:bg-bg-3 hover:border-brand-2/40 transition-all shadow-[var(--shadow-card)]"
         aria-label={expanded ? "Colapsar paleta" : "Expandir paleta"}
+        title={expanded ? "Colapsar" : "Expandir paleta"}
       >
-        {expanded ? <ChevronLeft className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        {expanded ? (
+          <ChevronLeft className="h-4 w-4 -translate-x-px" strokeWidth={2.5} />
+        ) : (
+          <ChevronRight className="h-4 w-4 translate-x-px" strokeWidth={2.5} />
+        )}
       </button>
 
-      <div className="flex-1 overflow-y-auto no-scrollbar py-3">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar py-3">
         {PALETTE_GROUPS.map((group, gi) => (
           <div key={group.label} className={cn(gi > 0 && "mt-3")}>
             <AnimatePresence initial={false}>

@@ -110,11 +110,10 @@ function FlowCanvasInner() {
         edgeTypes={edgeTypes}
         isValidConnection={isValidConnection as never}
         connectionRadius={32}
-        selectionOnDrag
-        panOnDrag={[0, 1, 2]} /* left/middle/right — permite pan con left-drag */
-        selectionMode={"partial" as never}
+        panOnDrag={true}
+        selectionOnDrag={false}
         selectionKeyCode={"Shift"}
-        multiSelectionKeyCode={["Meta", "Shift"]}
+        multiSelectionKeyCode={["Meta"]}
         deleteKeyCode={null /* lo manejamos en use-keyboard */}
         zoomOnScroll
         zoomOnPinch
@@ -127,6 +126,7 @@ function FlowCanvasInner() {
           selectNode(null);
           selectEdge(null);
         }}
+        onNodeClick={(_, n) => selectNode(n.id)}
         className="touch-none"
       >
         <Background

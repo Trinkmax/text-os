@@ -5,6 +5,11 @@ import { Plus } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -60,7 +65,13 @@ function FlowEditorInner({ flow, versions, allFlows }: FlowEditorProps) {
   const isTablet = useIsTablet();
 
   // Hidratamos el store con los datos cargados del Server Component.
+  // ÚNICAMENTE cuando cambia el flowId. Si las demás props cambian (ej: el
+  // Server Component re-rendea tras un revalidatePath), no queremos resetear
+  // el store y perder cambios en vuelo — el cliente ya tiene la verdad
+  // a través del autosave y el markSaved(updatedAt).
+  const currentFlowId = useFlowStore((s) => s.flowId);
   useEffect(() => {
+    if (currentFlowId === flow.id) return;
     init({
       flowId: flow.id,
       flowName: flow.name,
@@ -69,14 +80,15 @@ function FlowEditorInner({ flow, versions, allFlows }: FlowEditorProps) {
       baseUpdatedAt: flow.updatedAt,
       graph: flow.graph,
     });
-  }, [flow.id, flow.name, flow.version, flow.publishedVersionId, flow.updatedAt, flow.graph, init]);
+  }, [flow.id, flow.name, flow.version, flow.publishedVersionId, flow.updatedAt, flow.graph, init, currentFlowId]);
 
   useAutosave();
   useFlowKeyboard();
 
-  // En mobile, abrimos el sheet inspector al seleccionar un nodo.
+  // Abre el dialog/sheet del inspector cuando cambia la selección.
   useEffect(() => {
     if (selectedNodeId) setInspectorOpen(true);
+    else setInspectorOpen(false);
   }, [selectedNodeId]);
 
   function onPaletteTap(type: NodeType) {
@@ -84,7 +96,7 @@ function FlowEditorInner({ flow, versions, allFlows }: FlowEditorProps) {
     setPaletteOpen(false);
   }
 
-  const showInspector = !!selectedNodeId && !simulatorOpen;
+  const showInspectorDialog = !!selectedNodeId && inspectorOpen && !simulatorOpen && !isTablet;
 
   return (
     <div className="flex flex-col flex-1 min-h-0 h-full overflow-hidden">
@@ -103,8 +115,9 @@ function FlowEditorInner({ flow, versions, allFlows }: FlowEditorProps) {
           <NodePalette onTap={onPaletteTap} />
         </div>
 
-        {/* Canvas ocupa TODO el resto */}
-        <div className="flex-1 min-w-0 relative">
+        {/* Canvas ocupa TODO el resto. z-0 para que quede debajo del toggle
+            flotante de la paleta que sobresale por el borde. */}
+        <div className="flex-1 min-w-0 relative z-0">
           <FlowCanvas />
           <FlowsOnboarding />
           <FlowsCommandPalette />
@@ -121,36 +134,38 @@ function FlowEditorInner({ flow, versions, allFlows }: FlowEditorProps) {
           </Button>
         </div>
 
-        {/* Inspector overlay — flotante a la derecha, NO ocupa espacio del layout */}
+        {/* Simulator overlay flotante a la derecha — desktop */}
         <AnimatePresence>
-          {showInspector && (
-            <motion.aside
-              initial={{ x: 380, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: 380, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 340, damping: 32 }}
-              className="hidden lg:flex absolute top-3 right-3 bottom-3 w-[340px] z-20 rounded-2xl border border-[color:var(--border)] bg-bg-1/92 backdrop-blur-md shadow-[var(--shadow-hover)] overflow-hidden"
-            >
-              <NodeInspector mode="overlay" />
-            </motion.aside>
-          )}
-        </AnimatePresence>
-
-        {/* Simulator overlay — también flotante, pisa al inspector cuando está abierto */}
-        <AnimatePresence>
-          {simulatorOpen && (
+          {simulatorOpen && !isTablet && (
             <motion.aside
               initial={{ x: 400, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: 400, opacity: 0 }}
               transition={{ type: "spring", stiffness: 340, damping: 32 }}
-              className="hidden lg:flex absolute top-3 right-3 bottom-3 w-[380px] z-30 rounded-2xl border border-[color:var(--border)] bg-bg-1/95 backdrop-blur-md shadow-[var(--shadow-hover)] overflow-hidden"
+              className="absolute top-3 right-3 bottom-3 w-[380px] z-30 rounded-2xl border border-[color:var(--border)] bg-bg-1/95 backdrop-blur-md shadow-[var(--shadow-hover)] overflow-hidden flex"
             >
               <FlowSimulator onClose={() => openSimulator(false)} />
             </motion.aside>
           )}
         </AnimatePresence>
       </div>
+
+      {/* Inspector como Dialog modal centrado (desktop). Se cierra con ESC,
+          click afuera, o el botón X. Al cerrar, deseleccionamos el nodo. */}
+      <Dialog
+        open={showInspectorDialog}
+        onOpenChange={(v) => {
+          if (!v) {
+            setInspectorOpen(false);
+            useFlowStore.getState().selectNode(null);
+          }
+        }}
+      >
+        <DialogContent className="sm:max-w-[600px] sm:w-[92vw] sm:max-h-[82dvh] p-0 overflow-hidden flex flex-col">
+          <DialogTitle className="sr-only">Configurar nodo</DialogTitle>
+          <NodeInspector mode="dialog" />
+        </DialogContent>
+      </Dialog>
 
       {/* Mobile sheets — solo se montan realmente en viewport tablet/mobile.
           En desktop el overlay flotante hace su trabajo y NO queremos que el

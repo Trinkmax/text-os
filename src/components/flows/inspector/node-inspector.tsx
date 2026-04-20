@@ -13,7 +13,7 @@ import { NodeLogicForm } from "./forms/logic-form";
 import { NodeDataForm } from "./forms/data-form";
 import { NodeAdvancedForm } from "./forms/advanced-form";
 
-export function NodeInspector({ mode = "sidebar" }: { mode?: "sidebar" | "sheet" | "overlay" }) {
+export function NodeInspector({ mode = "sidebar" }: { mode?: "sidebar" | "sheet" | "overlay" | "dialog" }) {
   const node = useFlowStore((s) => {
     const id = s.selectedNodeId;
     return id ? s.nodes.find((n) => n.id === id) ?? null : null;
@@ -30,6 +30,7 @@ export function NodeInspector({ mode = "sidebar" }: { mode?: "sidebar" | "sheet"
           "flex flex-col h-full overflow-hidden",
           mode === "sidebar" && "w-[340px] border-l border-[color:var(--border)] bg-bg-1",
           mode === "overlay" && "w-full",
+          mode === "dialog" && "w-full min-h-[420px]",
         )}
       >
         <EmptyInspector />
@@ -46,23 +47,41 @@ export function NodeInspector({ mode = "sidebar" }: { mode?: "sidebar" | "sheet"
         "flex flex-col h-full overflow-hidden",
         mode === "sidebar" && "w-[340px] border-l border-[color:var(--border)] bg-bg-1",
         mode === "overlay" && "w-full",
+        mode === "dialog" && "w-full",
       )}
     >
       {/* Header */}
-      <div className="px-4 pt-4 pb-3 border-b border-[color:var(--border)]">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="h-7 w-7 rounded-lg bg-bg-2 border border-[color:var(--border)] flex items-center justify-center text-fg-2">
-            <Icon className="h-3.5 w-3.5" />
+      <div
+        className={cn(
+          "border-b border-[color:var(--border)]",
+          mode === "dialog" ? "px-5 pt-5 pb-4" : "px-4 pt-4 pb-3",
+        )}
+      >
+        <div className="flex items-center gap-2.5 mb-2.5">
+          <div
+            className={cn(
+              "rounded-xl flex items-center justify-center flex-shrink-0 bg-bg-2 border border-[color:var(--border)] text-fg-2",
+              mode === "dialog" ? "h-10 w-10" : "h-7 w-7",
+            )}
+          >
+            <Icon className={cn(mode === "dialog" ? "h-5 w-5" : "h-3.5 w-3.5")} />
           </div>
-          <div className="text-[10px] uppercase tracking-wider text-fg-4 font-medium">
-            {entry.shortLabel}
+          <div className="flex-1 min-w-0">
+            <div className="text-[10px] uppercase tracking-wider text-fg-4 font-medium leading-none">
+              {entry.shortLabel}
+            </div>
+            {mode === "dialog" && (
+              <div className="text-[13px] text-fg-3 mt-0.5 leading-snug truncate">
+                {entry.description}
+              </div>
+            )}
           </div>
-          <span className={cn("h-1.5 w-1.5 rounded-full", `dot-${node.semaphore}`)} />
+          <span className={cn("h-2 w-2 rounded-full", `dot-${node.semaphore}`)} />
           {mode === "overlay" && (
             <button
               type="button"
               onClick={() => selectNode(null)}
-              className="ml-auto h-7 w-7 flex items-center justify-center rounded-lg text-fg-4 hover:text-fg hover:bg-bg-2 transition-colors"
+              className="h-7 w-7 flex items-center justify-center rounded-lg text-fg-4 hover:text-fg hover:bg-bg-2 transition-colors"
               aria-label="Cerrar inspector"
             >
               <X className="h-3.5 w-3.5" />
@@ -72,14 +91,17 @@ export function NodeInspector({ mode = "sidebar" }: { mode?: "sidebar" | "sheet"
         <Input
           value={node.title}
           onChange={(e) => updateNode(node.id, { title: e.target.value })}
-          className="h-9 px-2.5 text-sm font-semibold bg-transparent border-transparent hover:bg-bg-2 focus:bg-bg-2 focus:border-brand-2"
+          className={cn(
+            "bg-transparent border-transparent hover:bg-bg-2 focus:bg-bg-2 focus:border-brand-2",
+            mode === "dialog" ? "h-11 px-3 text-base font-semibold" : "h-9 px-2.5 text-sm font-semibold",
+          )}
         />
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="content" className="flex-1 flex flex-col overflow-hidden">
-        <div className="px-4 pt-3">
-          <TabsList className="w-full grid grid-cols-4 h-8">
+      <Tabs defaultValue="content" className="flex-1 flex flex-col overflow-hidden min-h-0">
+        <div className={cn(mode === "dialog" ? "px-5 pt-4" : "px-4 pt-3")}>
+          <TabsList className="w-full grid grid-cols-4 h-9">
             <TabsTrigger value="content" className="text-[11px] px-2">
               Contenido
             </TabsTrigger>
@@ -95,7 +117,7 @@ export function NodeInspector({ mode = "sidebar" }: { mode?: "sidebar" | "sheet"
           </TabsList>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 pb-4 mt-3">
+        <div className={cn("flex-1 overflow-y-auto mt-3", mode === "dialog" ? "px-5 pb-5" : "px-4 pb-4")}>
           <TabsContent value="content" className="mt-0 pt-0">
             <NodeContentForm node={node} />
           </TabsContent>
@@ -112,7 +134,12 @@ export function NodeInspector({ mode = "sidebar" }: { mode?: "sidebar" | "sheet"
       </Tabs>
 
       {/* Footer */}
-      <div className="px-4 py-2.5 border-t border-[color:var(--border)] flex items-center gap-2">
+      <div
+        className={cn(
+          "border-t border-[color:var(--border)] flex items-center gap-2",
+          mode === "dialog" ? "px-5 py-3" : "px-4 py-2.5",
+        )}
+      >
         <div className="text-[10px] text-fg-4 font-mono uppercase tracking-wider flex-1 truncate">
           {node.id}
         </div>

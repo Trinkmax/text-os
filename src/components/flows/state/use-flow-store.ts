@@ -218,38 +218,48 @@ export const useFlowStore = create<FlowStore>()(
       const prevRf = get().rfNodes;
       const nextRf = applyNodeChanges(changes, prevRf);
 
-      // Sync posición/selección de vuelta al modelo de dominio.
-      const positionsChanged = changes.some((c) => c.type === "position" && c.dragging === false);
-      const selectionChanged = changes.some((c) => c.type === "select");
+      // Sólo marcamos dirty cuando hay un cambio REAL: posición final
+      // (dragging=false y posición distinta), o remove. Select / dimensions
+      // no deben disparar autosave.
+      const positionsChanged = changes.some(
+        (c) => c.type === "position" && c.dragging === false && (c.position?.x !== undefined || c.position?.y !== undefined),
+      );
       const removed = changes.some((c) => c.type === "remove");
 
-      const next = { rfNodes: nextRf } as Partial<FlowStore>;
+      // Ignoramos la auto-selección de xyflow (que dispara al hacer mousedown
+      // sobre el nodo, incluyendo al empezar a arrastrar). La selección la
+      // maneja exclusivamente onNodeClick vía selectNode(). Forzamos el flag
+      // `selected` en rfNodes para que coincida con nuestro selectedNodeId.
+      const selId = get().selectedNodeId;
+      const syncedRf = nextRf.map((n) => (n.selected === (n.id === selId) ? n : { ...n, selected: n.id === selId }));
+
+      const next = { rfNodes: syncedRf } as Partial<FlowStore>;
 
       if (positionsChanged || removed) {
         // Guardamos snapshot ANTES del cambio para poder hacer undo.
         pushHistory(set, get);
       }
 
-      // Sincronizamos posiciones actuales al modelo.
-      const nodeById = new Map(get().nodes.map((n) => [n.id, n]));
-      const updatedNodes: FlowNode[] = [];
-      for (const rf of nextRf as RfFlowNode[]) {
-        const prev = nodeById.get(rf.id);
-        if (!prev) continue;
-        updatedNodes.push(fromRfNode(rf, prev));
+      // Sincronizamos posiciones actuales al modelo SOLO si hubo cambio
+      // real de posición — sino mantenemos los nodos del modelo intactos
+      // para no disparar re-renders innecesarios y evitar dirty fantasma.
+      if (positionsChanged || removed) {
+        const nodeById = new Map(get().nodes.map((n) => [n.id, n]));
+        const updatedNodes: FlowNode[] = [];
+        for (const rf of syncedRf as RfFlowNode[]) {
+          const prev = nodeById.get(rf.id);
+          if (!prev) continue;
+          updatedNodes.push(fromRfNode(rf, prev));
+        }
+        next.nodes = updatedNodes;
       }
-      next.nodes = updatedNodes;
 
       if (removed) {
-        const keptIds = new Set(nextRf.map((r) => r.id));
+        const keptIds = new Set(syncedRf.map((r) => r.id));
         next.edges = get().edges.filter((e) => keptIds.has(e.from) && keptIds.has(e.to));
         next.rfEdges = next.edges.map(toRfEdge);
-      }
-
-      if (selectionChanged) {
-        const selected = nextRf.find((r) => r.selected);
-        next.selectedNodeId = selected?.id ?? null;
-        if (selected) next.selectedEdgeId = null;
+        // Si el nodo seleccionado fue borrado, limpiamos la selección.
+        if (selId && !keptIds.has(selId)) next.selectedNodeId = null;
       }
 
       if (positionsChanged || removed) next.dirty = true;
@@ -300,10 +310,10 @@ export const useFlowStore = create<FlowStore>()(
     },
 
     onViewportChange: (vp) => {
-      set({
-        viewport: vp,
-        dirty: true,
-      });
+      // El viewport se guarda sin marcar dirty: no queremos autosave por
+      // solo panear o hacer zoom. Se persistirá en el próximo save que
+      // dispare un cambio real (mover nodo, editar config, etc.).
+      set({ viewport: vp });
     },
 
     addNode: (type, at) => {
